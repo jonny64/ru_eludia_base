@@ -48,11 +48,22 @@ public final class JoinToOne extends Join {
             return select;
         }
         
-        String [] ar = hint.split (".");
+        String alias = "";
+        String refnm = "";        
         
-        String alias = ar.length < 1 || ar [0] == null ? "" : ar [0];
-        String refnm = ar.length < 2 || ar [1] == null ? "" : ar [1];
-        
+        String [] ar = hint.split ("\\.");
+        switch (ar.length) {
+            case 1:
+                refnm = ar [0];
+                break;
+            case 2:
+                alias = ar [0];
+                refnm = ar [1];
+                break;
+            default:
+                throw new IllegalArgumentException ("illegal join hint: " + hint);
+        }
+
         Ref ref   = null;
         Part part = null;
         
