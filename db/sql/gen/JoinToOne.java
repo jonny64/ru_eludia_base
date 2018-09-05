@@ -1,5 +1,6 @@
 package ru.eludia.base.db.sql.gen;
 
+import java.util.StringTokenizer;
 import ru.eludia.base.model.Col;
 import ru.eludia.base.model.Ref;
 import ru.eludia.base.model.Table;
@@ -49,19 +50,13 @@ public final class JoinToOne extends Join {
         }
         
         String alias = "";
-        String refnm = "";        
+        String refnm = "";
+        StringTokenizer st = new StringTokenizer (hint, ".");
         
-        String [] ar = hint.split ("\\.");
-        switch (ar.length) {
-            case 1:
-                refnm = ar [0];
-                break;
-            case 2:
-                alias = ar [0];
-                refnm = ar [1];
-                break;
-            default:
-                throw new IllegalArgumentException ("illegal join hint: " + hint);
+        while (st.hasMoreTokens ()) {            
+            if (!alias.isEmpty ()) throw new IllegalArgumentException ("Invalid join hint: '" + hint + "'");
+            if (!refnm.isEmpty ()) alias = refnm;
+            refnm = st.nextToken ();
         }
 
         Ref ref   = null;
