@@ -24,18 +24,24 @@ public final class JoinToOne extends Join {
             return (Ref) column;
             
         }
-        
+
+        Ref result = null;
+
         for (Col column: p.getTable ().getColumns ().values ()) {
-            
+
             if (!(column instanceof Ref)) continue;
-            
+
             Ref ref = (Ref) column;
-            
-            if (ref.getTargetTable ().equals (getTable ())) return ref;
+
+            if (!ref.getTargetTable ().equals (getTable ())) continue;
+
+            if (result != null) throw new IllegalArgumentException ("Ambiguous ref from " + p.getTable ().getName () + " to " + table.getName () + ": " + result.getName () + " vs. " + ref.getName ());
+
+            result = ref;
 
         }
-        
-        return null;
+
+        return result;
         
     }
 
