@@ -298,6 +298,9 @@ public class TypeConverter {
                             writeMethod.invoke (javaBean, false);
                     }
                 }
+                else if (XMLGregorianCalendar.class.equals (type)) {
+                    writeMethod.invoke (javaBean, XMLGregorianCalendar (value.toString ().replace (' ', 'T')));
+                }
                 else {
                     logger.warning ("javaBean property setting not supported for " + type.getName ());
                 }
