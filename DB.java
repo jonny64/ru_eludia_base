@@ -1245,8 +1245,80 @@ public abstract class DB implements AutoCloseable, ParamSetter {
         
         return jb;
         
+    }     
+    
+    /**
+     * Извлечение выборки по запросу в виде индекса: ключ-запись
+     * @param rs выборка
+     * @param key имя ключевого поля
+     * @return Map, где значениям ключевого поля соответствуют записи, полученные как HASH
+     * @throws SQLException
+     */
+    
+    public final Map <Object, Map <String, Object>> getIdx (ResultSet rs, String key) throws SQLException {
+        
+        Map <Object, Map <String, Object>> result = new HashMap ();
+        
+        while (rs.next ()) {
+            Map<String, Object> r = HASH (rs);
+            result.put (r.get (key), r);
+        }
+        
+        return result;
+        
+    }
+    
+    /**
+     * Извлечение выборки по запросу в виде индекса: ключ-запись
+     * @param qp запрос
+     * @param key имя ключевого поля
+     * @return Map, где значениям ключевого поля соответствуют записи, полученные как HASH
+     * @throws SQLException
+     */
+    
+    public final Map <Object, Map <String, Object>> getIdx (QP qp, String key) throws SQLException {
+        
+        Map <Object, Map <String, Object>> result = new HashMap ();
+        
+        forEach (qp, rs -> {
+            Map<String, Object> r = HASH (rs);
+            result.put (r.get (key), r);
+        });
+                
+        return result;
+        
     }
         
+    /**
+     * Извлечение выборки по запросу в виде индекса: ключ-запись
+     * @param s запрос
+     * @param key имя ключевого поля (если null — используется имя 1-го поля PK главной таблицы запроса)
+     * @return Map, где значениям ключевого поля соответствуют записи, полученные как HASH
+     * @throws SQLException
+     */
+    
+    public final Map <Object, Map <String, Object>> getIdx (Select s, String key) throws SQLException {
+        
+        if (key == null) key = s.getTable ().getPk ().get (0).getName ();
+        
+        return getIdx (toQP (s), key);
+        
+    }
+    
+    /**
+     * Извлечение выборки по запросу в виде индекса: ключ-запись
+     * @param s запрос
+     * @param key имя ключевого поля (если null — используется имя 1-го поля PK главной таблицы запроса)
+     * @return Map, где значениям ключевого поля соответствуют записи, полученные как HASH
+     * @throws SQLException
+     */
+    
+    public final Map <Object, Map <String, Object>> getIdx (Select s) throws SQLException {
+        
+        return getIdx (s, null);
+        
+    }
+
     public abstract QP toQP (Select s);
     protected abstract QP toCntQP (Select s);
     protected abstract QP toDeleteQP (Select s);
