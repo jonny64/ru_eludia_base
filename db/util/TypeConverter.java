@@ -284,7 +284,7 @@ public class TypeConverter {
                     if (s.isEmpty ()) continue;
                     writeMethod.invoke (javaBean, s);
                 }
-                else if (Boolean.class.equals (type)) {
+                else if (Boolean.class.equals (type) || "boolean".equals (type.getName ())) {
                     final String s = value.toString ();
                     if (s.isEmpty ()) continue;
                     switch (s) {
