@@ -7,11 +7,15 @@ import java.io.InputStream;
 import java.io.StringReader;
 import java.lang.reflect.Method;
 import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Logger;
+import java.util.stream.IntStream;
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonNumber;
@@ -193,7 +197,13 @@ public class TypeConverter {
 
         if (s.length () < 10) throw new IllegalArgumentException ("Invalid date: '" + s + "'");
         
-        if (s.length () == 10) return Timestamp.valueOf (s + " 00:00:00");
+        if (s.length () == 10) {
+            if (s.matches("\\d{2}.\\d{2}.\\d{4}")) {
+                String[] dateParts = s.split("\\.");
+                s = dateParts[2].concat("-").concat(dateParts[1]).concat("-").concat(dateParts[0]);
+            }
+            return Timestamp.valueOf (s + " 00:00:00");
+        }
         
         if (s.charAt (10) == ' ') return Timestamp.valueOf (s);
         
