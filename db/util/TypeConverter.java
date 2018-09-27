@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonNumber;
@@ -29,6 +30,7 @@ public class TypeConverter {
     private static final Logger logger = Logger.getLogger (TypeConverter.class.getName ());
 
     private final static char[] hexArray = "0123456789ABCDEF".toCharArray ();
+    private final static Pattern datePattern = Pattern.compile("\\d{2}.\\d{2}.\\d{4}");
     static DatatypeFactory dtf;        
     
     static {
@@ -194,7 +196,7 @@ public class TypeConverter {
         if (s.length () < 10) throw new IllegalArgumentException ("Invalid date: '" + s + "'");
         
         if (s.length () == 10) {
-            if (s.matches("\\d{2}.\\d{2}.\\d{4}")) {
+            if (datePattern.matcher(s).matches()) {
                 String[] dateParts = s.split("\\.");
                 s = dateParts[2].concat("-").concat(dateParts[1]).concat("-").concat(dateParts[0]);
             }
