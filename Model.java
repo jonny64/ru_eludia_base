@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.StringTokenizer;
@@ -188,11 +189,19 @@ logger.info ("url = " + url);
         logger.log (Level.INFO, "Registering table definitions from {0}...", new Object[]{p});
 
         String path = p.replace ('.', '/');
-            
+        
+        List<URL> urlList = new ArrayList<URL> ();
+        
         Collections.list (Thread.currentThread ().getContextClassLoader ().getResources (path)).forEach (url -> {
                 
-            try {                
-                addPackageFromUrl (p, url);
+            try {
+                if (!urlList.contains(url)) {
+                    addPackageFromUrl (p, url);
+                    urlList.add(url);
+                } else {
+                    logger.log (Level.WARNING, "Repeatable URLs found! Skipping...");
+                }
+                    
             }
             catch (Exception ex) {
                 logger.log (Level.SEVERE, null, ex);
