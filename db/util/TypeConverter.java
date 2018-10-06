@@ -51,7 +51,9 @@ public class TypeConverter {
      * @return "" для null, o.toString () для прочих
      */
     public final static String String (Object o) {
-        return o == null ? "" : o.toString ();
+        if (o == null) return "";
+        if (o instanceof Boolean) return (Boolean) o ? "1" : "0"; 
+        return o.toString ();
     }
     
     /**
