@@ -3,6 +3,8 @@ package ru.eludia.base;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.sql.Blob;
 import ru.eludia.base.db.sql.build.QP;
 import ru.eludia.base.db.util.JDBCConsumer;
@@ -30,7 +32,6 @@ import ru.eludia.base.db.sql.build.SQLBuilder;
 import ru.eludia.base.db.sql.build.TableRecordSQLBuilder;
 import ru.eludia.base.db.sql.build.TableRecordListBuilder;
 import ru.eludia.base.db.sql.build.TableSQLBuilder;
-import ru.eludia.base.Model;
 import ru.eludia.base.model.phys.PhysicalCol;
 import ru.eludia.base.model.abs.Roster;
 import ru.eludia.base.model.Table;
@@ -64,6 +65,55 @@ public abstract class DB implements AutoCloseable, ParamSetter {
 
     protected Connection cn;
     protected Model model;
+    
+    /**
+     * Проверка того, сводится ли значение переданного объекта к 
+     * long-числу, которое можно получить как Number::longValue
+     * @param o Любой объект или null
+     * @return true, если o -- экземпляр Long, Integer, Short, Byte, 
+     * либо такой BigDecimal/BigInteger, что longValue () не приводит
+     * к потере точности
+     */
+    public static final boolean isLongValue (Object o) {
+        if (o == null) return false;
+        if (!(o instanceof Number)) return false;
+        if (o instanceof Long) return true;
+        if (o instanceof Integer) return true;
+        if (o instanceof BigDecimal) {
+            BigDecimal bd = (BigDecimal) o;
+            return bd.scale () == 0 && bd.abs ().compareTo (BigDecimal.valueOf (Long.MAX_VALUE)) < 1;
+        }
+        if (o instanceof BigInteger) {
+            BigInteger bi = (BigInteger) o;
+            return bi.abs ().compareTo (BigInteger.valueOf (Long.MAX_VALUE)) < 1;
+        }
+        if (o instanceof Short) return true;
+        if (o instanceof Byte) return true;
+        return false;
+    }
+
+    /**
+     * Сравнение значений произвольных классов 
+     * в строковом контексте по аналогии с Perl5
+     * @param x Любой объект или null
+     * @param y Любой объект или null
+     * @return true, если совпадают строковые представления x и y, где null считается за строку нулевой длины ("").
+     */
+    public static final boolean eq (Object x, Object y) {
+        if (x == null) return y == null || "".equals (y);
+        if (y == null || "".equals (y)) return "".equals (x);
+        if (x.getClass ().equals (y.getClass ()) && x.equals (y)) return true;
+        if (isLongValue (x) && isLongValue (y)) return ((Number) x).longValue () == ((Number) y).longValue ();
+        return x.toString ().equals (y.toString ());
+    }
+    
+    public final static boolean isTrue (Object o) {
+        return DB.to.Boolean (o);
+    }
+    
+    public final static boolean isFalse (Object o) {
+        return !DB.to.Boolean (o);
+    }
 
     /**
      * Редко используемый метод для получения вложенного JDBC Connection.

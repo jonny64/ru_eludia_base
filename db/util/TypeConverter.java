@@ -24,6 +24,7 @@ import javax.json.JsonValue;
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
 import javax.xml.datatype.XMLGregorianCalendar;
+import ru.eludia.base.DB;
 
 public class TypeConverter {
     
@@ -42,6 +43,109 @@ public class TypeConverter {
             throw new IllegalStateException ("Cannot create DatatypeFactory", ex);
         }
 
+    }
+    
+    /**
+     * Не-null строка из произвольного объекта
+     * @param o что угодно
+     * @return "" для null, o.toString () для прочих
+     */
+    public final static String String (Object o) {
+        return o == null ? "" : o.toString ();
+    }
+    
+    /**
+     * long-значение объекта любого подходящего типа
+     * @param o что угодно
+     * @return 0 для null, пустой строки ("") и false; 1 для true; эквивалент Long.parseLong (o.toString ()) для прочих
+     * @throws NumberFormatException если совсем никак
+     */
+    public final static long Long (Object o) {
+        
+        if (o == null) return 0L;
+        
+        if (DB.isLongValue (o)) return ((Number) o).longValue ();
+
+        if (o instanceof Boolean) return (Boolean) o ? 1L : 0L;
+
+        String s = o.toString ();
+        
+        switch (s.length ()) {
+            
+            case 0: return 0L;
+            
+            case 1: switch (s.charAt (0)) {
+                case '0': return 0L;
+                case '1': return 1L;
+                case '2': return 2L;
+                case '3': return 3L;
+                case '4': return 4L;
+                case '5': return 5L;
+                case '6': return 6L;
+                case '7': return 7L;
+                case '8': return 8L;
+                case '9': return 9L;
+                default: throw new NumberFormatException ("Not a long: '" + s + "'");
+            }
+            
+            default: return Long.parseLong (s);
+ 
+        }
+        
+    }
+
+    /**
+     * Логическое значение для произвольного объекта в логичечком контексте,
+     * по аналогии с Per5, js и прочими аналогичными языками.
+     * @param o что угодно
+     * @return false для:
+     * * null;
+     * * целого нуля (0) любого типа (в том числе BigDecimal)
+     * * строк: 
+     * ** "" (пустая строка)
+     * ** "0"
+     * ** " " (пробел)
+     * ** "N" / "n"
+     * ** "F" / "f" / "False" / "false"
+     * ** "null"
+     * и true для всех прочих значений, в том числе дробных 0.0.
+     */
+    public static final boolean Boolean (Object o) {
+
+        if (o == null) return false;
+        
+        if (o instanceof Boolean) return (Boolean) o;
+
+        if (DB.isLongValue (o)) return 0L != ((Number) o).longValue ();
+
+        final String s = o.toString ();        
+        int length = s.length ();
+        
+        switch (length) {
+            
+            case 0: return false;
+            
+            case 1: switch (s.charAt (0)) {
+                case '0':
+                case 'N':
+                case 'n':
+                case 'F':
+                case 'f':
+                case ' ':
+                    return false;
+                default: 
+                    return true;
+            }
+            
+            case 4: return !("null".equals (s));
+
+            case 5: return !("false".equals (s) || "False".equals (s));
+            
+            default: 
+                return true;
+
+        }
+        
     }
     
     /**
@@ -69,7 +173,7 @@ public class TypeConverter {
             Object value = kv.getValue ();
             
             if (value == null) return;
-            
+                        
             if (value instanceof JsonValue) {
                  job.add (kv.getKey (), (JsonValue) value);
             }
@@ -173,18 +277,6 @@ public class TypeConverter {
         
         return (InputStream) v;
         
-    }
-    
-    /**
-     * Получение логического значения -- при условии того, что 
-     * истина в строковом представлении всегда выглядит как "1"
-     * @param v исходное значение
-     * @return true, если v приводится к значению "1"; 
-     * иначе -- false (в том числе для null!)
-     */
-    public static final Boolean bool (Object v) {
-        if (v == null) return false;
-        return "1".equals (v.toString ());
     }
     
     public static final Timestamp timestamp (Object v) {
