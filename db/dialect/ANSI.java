@@ -7,6 +7,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -530,7 +531,7 @@ public abstract class ANSI extends DB {
         d0 (genSetPkSql (table));
     }
     
-    protected final void create (Table table) throws SQLException {
+    protected final void create (Table table, List<Ref> newRefs) throws SQLException {
         
         logger.fine ("Creating " + table.getName ());
         
@@ -599,7 +600,7 @@ public abstract class ANSI extends DB {
                 
     }
     
-    private void update (PhysicalTable oldTable, Table newTable, Col toBe) throws SQLException {
+    private void update (PhysicalTable oldTable, Table newTable, Col toBe, List<Ref> newRefs) throws SQLException {
         
         PhysicalCol asIs = (PhysicalCol) oldTable.getColumns ().get (toBe.getName ());
         
@@ -617,14 +618,14 @@ public abstract class ANSI extends DB {
 
     }    
 
-    private void update (PhysicalTable oldTable, Table newTable) throws SQLException {
+    private void update (PhysicalTable oldTable, Table newTable, List<Ref> newRefs) throws SQLException {
 
         logger.fine ("Updating " + oldTable + " -> " + newTable);
 
         final Collection<Col> cols = newTable.getColumns ().values ();
 
-        for (Col toBe: cols) if (!toBe.toPhysical ().isVirtual ()) update (oldTable, newTable, toBe);
-        for (Col toBe: cols) if ( toBe.toPhysical ().isVirtual ()) update (oldTable, newTable, toBe);
+        for (Col toBe: cols) if (!toBe.toPhysical ().isVirtual ()) update (oldTable, newTable, toBe, newRefs);
+        for (Col toBe: cols) if ( toBe.toPhysical ().isVirtual ()) update (oldTable, newTable, toBe, newRefs);
 
         for (Key i: newTable.getKeys ().values ()) {
             
@@ -648,9 +649,7 @@ public abstract class ANSI extends DB {
         if (!oldTable.getRemark ().equals (newTable.getRemark ())) comment (newTable);
         
     }
-    
-    List<Ref> newRefs = null;
-    
+        
     private final void updateData (Table t) throws SQLException {
     
         List<Map <String, Object>> data = t.getData ();
@@ -722,56 +721,41 @@ public abstract class ANSI extends DB {
     
     @Override
     public void updateSchema (Table... wishes) throws SQLException {
-        
-        PhysicalModel ex = getExistingModel ();
-        
-        newRefs = new ArrayList <> ();
-
-        for (Table toBe: wishes) {
-            
-            adjustTable (toBe);
-
-            PhysicalTable asIs = ex.get (toBe.getName ());
-
-            if (asIs == null) create (toBe); else update (asIs, toBe);
-            
-        }
-        
-        for (Ref ref: newRefs) create (ref);        
-        
-        checkModel();
-
+        updateSchema (Arrays.asList (wishes));
     }
     
-    public void updateSchema () throws SQLException {
+    public void updateSchema (Collection<Table> tv) throws SQLException {
         
         PhysicalModel ex = getExistingModel ();
 
-        newRefs = new ArrayList <> ();
+        List<Table> tables = new ArrayList<> ();
+        List<View>  views  = new ArrayList<> ();
+        List<Ref> newRefs  = new ArrayList<> ();
+        
+        for (Table i: tv) if (i instanceof View) views.add ((View) i); else tables.add (i);
                 
-        for (Table toBe: model.getTables ()) if (!(toBe instanceof View)) {
-            
-            PhysicalTable asIs = ex.get (toBe.getName ());
-            
-            if (asIs == null) create (toBe); else update (asIs, toBe);
-                                    
+        for (Table toBe: tables) {            
+            PhysicalTable asIs = ex.get (toBe.getName ());            
+            if (asIs == null) create (toBe, newRefs); else update (asIs, toBe, newRefs);                                    
         }
-                
-        for (Table t: model.getTables ()) 
-            if (t instanceof View) 
-                update ((View) t);
-            else             
-                updateData (t);
+        
+        for (Table t: tables) updateData (t);        
+        
+        for (View v: views) update (v);
         
         for (Ref ref: newRefs) create (ref);
         
-        for (Table t: model.getTables ()) for (Trigger trg: t.getTriggers ().values ()) update (t, trg);
-                
-        checkModel();
+        for (Table t: tables) for (Trigger trg: t.getTriggers ().values ()) update (t, trg);
+
+        checkModel ();
 
     }
-    protected void checkModel () throws SQLException {
+
+    public void updateSchema () throws SQLException {
+        updateSchema (model.getTables ());
     }
+    
+    protected void checkModel () throws SQLException {}
     
     protected abstract PhysicalKey toPhysical (Table table, Key k);
     protected abstract Col toCanonical (Col col);
@@ -793,8 +777,5 @@ public abstract class ANSI extends DB {
     protected abstract String getTypeName (PhysicalCol col);
     protected abstract void update (View view) throws SQLException;
     protected abstract void update (Table table, Trigger trg) throws SQLException;
-    
-    
-    
     
 }
