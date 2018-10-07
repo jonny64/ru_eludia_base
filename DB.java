@@ -107,12 +107,8 @@ public abstract class DB implements AutoCloseable, ParamSetter {
         return x.toString ().equals (y.toString ());
     }
     
-    public final static boolean isTrue (Object o) {
+    public final static boolean ok (Object o) {
         return DB.to.Boolean (o);
-    }
-    
-    public final static boolean isFalse (Object o) {
-        return !DB.to.Boolean (o);
     }
 
     /**
