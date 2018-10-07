@@ -18,7 +18,6 @@ import java.util.StringTokenizer;
 import java.util.function.BiFunction;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.json.JsonObject;
 import ru.eludia.base.db.sql.build.QP;
 import ru.eludia.base.db.sql.build.TableSQLBuilder;
 import ru.eludia.base.model.abs.AbstractCol;
@@ -40,8 +39,6 @@ import ru.eludia.base.model.def.Def;
 import ru.eludia.base.model.diff.TypeAction;
 import ru.eludia.base.model.phys.PhysicalModel;
 import ru.eludia.base.db.sql.build.SQLBuilder;
-import ru.eludia.base.db.sql.gen.Select;
-import ru.eludia.base.db.util.JDBCConsumer;
 import static ru.eludia.base.model.def.Blob.EMPTY_BLOB;
 
 public final class Oracle extends ANSI {

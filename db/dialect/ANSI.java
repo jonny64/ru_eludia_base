@@ -749,29 +749,24 @@ public abstract class ANSI extends DB {
 
         newRefs = new ArrayList <> ();
                 
-        for (Table toBe: model.getTables ()) {
+        for (Table toBe: model.getTables ()) if (!(toBe instanceof View)) {
             
-            if (toBe instanceof View) {
-                
-                update ((View) toBe);
-                
-            }
-            else {
-
-                PhysicalTable asIs = ex.get (toBe.getName ());
+            PhysicalTable asIs = ex.get (toBe.getName ());
             
-                if (asIs == null) create (toBe); else update (asIs, toBe);
-            
-            }
-                        
+            if (asIs == null) create (toBe); else update (asIs, toBe);
+                                    
         }
+                
+        for (Table t: model.getTables ()) 
+            if (t instanceof View) 
+                update ((View) t);
+            else             
+                updateData (t);
         
         for (Ref ref: newRefs) create (ref);
         
-        for (Table t: model.getTables ()) if (!(t instanceof View)) updateData (t);
-        
         for (Table t: model.getTables ()) for (Trigger trg: t.getTriggers ().values ()) update (t, trg);
-        
+                
         checkModel();
 
     }
