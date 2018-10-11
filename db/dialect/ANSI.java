@@ -437,13 +437,25 @@ public abstract class ANSI extends DB {
         }
         
     }
+    
+    public boolean equalDef (PhysicalCol asIs, PhysicalCol toBe) {
+        
+        String a = asIs.getDef ();
+        String b = toBe.getDef ();
+        
+        if (a == null && b == null) return true;
+        if (a == null && b != null) return false;
+        if (a != null && b == null) return false;
+        if (a.equals (b)) return true;
+        
+        return false;
+        
+    }
 
     protected void appendColDefaultExpression (QP qp, PhysicalCol col) {
-                
-        if (col.getDef () == null) return;
-        
+
         qp.append (" DEFAULT ");
-        qp.append (col.getDef ());
+        qp.append (col.getDef () == null ? "NULL" : col.getDef ());
         
     }
     
@@ -501,7 +513,7 @@ public abstract class ANSI extends DB {
 
         logger.fine ("Updating " + table + '.' + asIs.getName () + ": " + asIs + " to " + toBe);
 
-        Diff diff = new Diff (asIs, toBe, getTypeActionGetter ());
+        Diff diff = new Diff (asIs, toBe, this);
         
         adjustNullability (table, toBe, diff.getNullAction ());
         
@@ -761,7 +773,6 @@ public abstract class ANSI extends DB {
     protected abstract Col toCanonical (Col col);
     protected abstract String toSQL (Def def, JDBCType type);
     protected abstract PhysicalCol toBasicPhysical (Col col);
-    protected abstract BiFunction<JDBCType, JDBCType, TypeAction> getTypeActionGetter();
     protected abstract PhysicalModel getExistingModel () throws SQLException;
     protected abstract QP genCreateSql (Table table) throws SQLException;
     protected abstract QP genSetPkSql (Table table);

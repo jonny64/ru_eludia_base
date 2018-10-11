@@ -15,7 +15,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
-import java.util.function.BiFunction;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import ru.eludia.base.db.sql.build.QP;
@@ -252,18 +251,14 @@ public final class Oracle extends ANSI {
     }    
 
     @Override
-    protected BiFunction<JDBCType, JDBCType, TypeAction> getTypeActionGetter () {
-        
-        return (JDBCType asIs, JDBCType toBe) -> {
+    public TypeAction getTypeAction (JDBCType asIs, JDBCType toBe) {
+                
+        if (asIs == toBe) return null;
             
-            if (asIs == toBe) return null;
-            
-            if (asIs == JDBCType.TIMESTAMP && toBe == JDBCType.DATE) return null;
+        if (asIs == JDBCType.TIMESTAMP && toBe == JDBCType.DATE) return null;
 
-            return TypeAction.RECREATE;
+        return TypeAction.RECREATE;
             
-        };
-
     }
 
     @Override
@@ -355,6 +350,76 @@ public final class Oracle extends ANSI {
         throw new IllegalArgumentException ("Not supported default value: " + def);
         
     }
+    
+    private boolean isInParens (String s) {
+        return 
+            s.charAt               (0) == '(' && 
+            s.charAt (s.length () - 1) == ')';
+    }
+    
+    private String stripQuotes (String s) {
+
+        if (s.indexOf ('"') < 0) return s;
+
+        StringBuilder sb = new StringBuilder ();
+
+        boolean inApos = false;
+
+        for (int i = 0; i < s.length (); i ++) {
+
+            char c = s.charAt (i);
+
+            if (c == '\'') inApos = !inApos;
+
+            if (!inApos) switch (c) {
+                case '"': continue;
+                case ' ': continue;
+            }
+            
+            sb.append (c);
+            
+        }
+        
+        return sb.toString ();
+        
+    }
+    
+    private boolean eqVirtDef (String a, String b) {
+        
+        if (isInParens (b)) b = b.substring (1, b.length () - 1);
+
+        a = stripQuotes (a);
+        b = stripQuotes (b);
+
+        if (a.equals (b)) return true;
+
+        if (a.startsWith ("TO_CHAR(") && a.equals ("TO_CHAR(" + b + ')')) return true;
+
+        return false;
+        
+    }
+
+    @Override
+    public boolean equalDef (PhysicalCol asIs, PhysicalCol toBe) {
+        
+        if (super.equalDef (asIs, toBe)) return true;
+        
+        String a = asIs.getDef ();
+        String b = toBe.getDef ();
+        
+        if (a == null || b == null) return false; // both nulls are handled by super method
+
+        int la = a.length ();
+        int lb = b.length ();
+        int dl = lb - la;
+        
+        if (dl == -1 && a.endsWith (" ") && a.startsWith (b)) return true; // somtimes, Oracle appends spaces
+        
+        if (toBe.isVirtual ()) return eqVirtDef (a, b);
+            
+        return false;
+        
+    }        
 
     @Override
     protected PhysicalModel getExistingModel () throws SQLException {

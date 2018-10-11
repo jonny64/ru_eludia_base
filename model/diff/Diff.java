@@ -4,6 +4,7 @@ import java.sql.JDBCType;
 import java.util.function.BiFunction;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import ru.eludia.base.DB;
 import ru.eludia.base.model.phys.PhysicalCol;
 
 public final class Diff {
@@ -25,17 +26,30 @@ public final class Diff {
         if (asIs.getType () == JDBCType.NUMERIC && toBe.getType () == JDBCType.NUMERIC) return isNumShorter (asIs, toBe);
         return asIs.getLength () < toBe.getLength ();        
     }
-
-    public Diff (PhysicalCol asIs, PhysicalCol toBe, BiFunction<JDBCType, JDBCType, TypeAction> getTypeAction) {
+    
+    public Diff (PhysicalCol asIs, PhysicalCol toBe, DB db) {
         
         isCommentChanged = !asIs.getRemark ().equals (toBe.getRemark ());
 
         nullAction = NullAction.get (asIs.isNullable (), toBe.isNullable ());
                 
-        typeAction = getTypeAction.apply (asIs.getType (), toBe.getType ());
+        typeAction = db.getTypeAction (asIs.getType (), toBe.getType ());
         
         if (typeAction == null && isShorter (asIs, toBe)) typeAction = TypeAction.ALTER;
-        
+                
+        if (typeAction == null && !db.equalDef (asIs, toBe)) {
+
+            logger.info (toBe.getName () + ": DEFAULT changed from " + asIs.getDef () + " to " + toBe.getDef ());
+
+            if (toBe.isVirtual ()) {
+                typeAction = TypeAction.RECREATE;
+            }
+            else {                
+                typeAction = TypeAction.ALTER;
+            }
+
+        }
+
         logger.log (Level.FINE, toBe + " - " + asIs + " = " + this);
 
         if (nullAction == NullAction.UNSET && toBe.getDef () == null) throw new IllegalArgumentException ("When setting NOT NULL, a DEFAULT must be provided: " + asIs + " -} " + toBe);

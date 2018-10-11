@@ -3,6 +3,8 @@ package ru.eludia.base.model.phys;
 import java.sql.JDBCType;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import javax.json.Json;
+import javax.json.JsonObjectBuilder;
 import ru.eludia.base.model.abs.AbstractCol;
 
 public final class PhysicalCol extends AbstractCol {
@@ -52,11 +54,35 @@ public final class PhysicalCol extends AbstractCol {
 
     public void setDef (String def) {
         this.def = def;
-    }
+    }    
 
     @Override
     public String toString () {
-        return "[" + getName () + " " + type + "(" + length + "," + precision + ")=" + def + (isNullable () ? " " : " NOT") + " NULL #" + remark + "]";
+        
+        StringBuilder sb = new StringBuilder (type.name ());
+        
+        if (length > 0) {
+            sb.append ('[');
+            sb.append (length);
+            if (precision > 0) {
+                sb.append (',');
+                sb.append (precision);
+            }
+            
+            sb.append (']');            
+        }
+        
+        final JsonObjectBuilder job = Json.createObjectBuilder ()
+            .add ("name", name)
+            .add ("type", sb.toString ());
+        
+        if (def == null) job.addNull ("def"); else job.add ("def", def);
+
+        return job           
+            .add ("virtual", virtual)
+            .add ("remark", remark)
+        .build ().toString ();
+        
     }
     
 }

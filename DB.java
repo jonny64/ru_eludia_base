@@ -9,6 +9,7 @@ import java.sql.Blob;
 import ru.eludia.base.db.sql.build.QP;
 import ru.eludia.base.db.util.JDBCConsumer;
 import java.sql.Connection;
+import java.sql.JDBCType;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -41,6 +42,7 @@ import ru.eludia.base.db.util.ParamSetter;
 import ru.eludia.base.db.util.TypeConverter;
 import javax.xml.datatype.XMLGregorianCalendar;
 import ru.eludia.base.model.Col;
+import ru.eludia.base.model.diff.TypeAction;
 
 /**
  * Обёртка над JDBC Connection, через которую доступна большая часть API БД Dia.java.
@@ -1726,5 +1728,7 @@ public abstract class DB implements AutoCloseable, ParamSetter {
     public abstract QP toLimitedQP (QP qp, int offset, Integer limit);
     public abstract PhysicalCol toPhysical (Col col);
     public abstract void adjustTable (Table t);
+    public abstract TypeAction getTypeAction (JDBCType asIs, JDBCType toBe);
+    public abstract boolean equalDef (PhysicalCol asIs, PhysicalCol toBe);
 
 }
