@@ -21,7 +21,7 @@ public final class PhysicalCol extends AbstractCol {
         nullable = rs.getInt    ("NULLABLE") == 1;
         def      = rs.getString ("COLUMN_DEF");
 
-        if ("NULL".equals (def)) def = null;
+        if ("NULL".equals (def) || "NULL ".equals (def)) def = null;
 
     }
 
