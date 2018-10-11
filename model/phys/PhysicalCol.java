@@ -20,7 +20,9 @@ public final class PhysicalCol extends AbstractCol {
         type     = JDBCType.valueOf (rs.getInt ("DATA_TYPE"));
         nullable = rs.getInt    ("NULLABLE") == 1;
         def      = rs.getString ("COLUMN_DEF");
-                
+
+        if ("NULL".equals (def)) def = null;
+
     }
 
     public void setVirtual (boolean virtual) {
