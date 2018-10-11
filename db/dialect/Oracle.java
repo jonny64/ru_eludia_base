@@ -78,8 +78,7 @@ public final class Oracle extends ANSI {
                 Object num = 
                     md.getScale (n)     > 0  ? rs.getBigDecimal (n) : 
                     md.getPrecision (n) > 18 ? rs.getBigDecimal (n) : 
-                    md.getPrecision (n) > 10 ? rs.getLong (n) : 
-                    rs.getInt (n);
+                                               rs.getLong (n);
                 return rs.wasNull () ? null : num;
             case CLOB:
             case VARCHAR:
