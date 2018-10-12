@@ -632,31 +632,10 @@ public abstract class ANSI extends DB {
 
     private void update (PhysicalTable oldTable, Table newTable, List<Ref> newRefs) throws SQLException {
 
-        logger.fine ("Updating " + oldTable + " -> " + newTable);
-
         final Collection<Col> cols = newTable.getColumns ().values ();
 
         for (Col toBe: cols) if (!toBe.toPhysical ().isVirtual ()) update (oldTable, newTable, toBe, newRefs);
         for (Col toBe: cols) if ( toBe.toPhysical ().isVirtual ()) update (oldTable, newTable, toBe, newRefs);
-
-        for (Key i: newTable.getKeys ().values ()) {
-            
-            PhysicalKey toBe = toPhysical (newTable, i);
-            
-            PhysicalKey asIs = (PhysicalKey) oldTable.getKeys ().get (toBe.getName ());
-            
-            if (asIs == null) {
-                
-                create (newTable, toBe);
-
-            }
-            else if (!asIs.equals (toBe)) {
-                
-                recreate (newTable, toBe);
-                
-            }            
-            
-        }
                     
         if (!oldTable.getRemark ().equals (newTable.getRemark ())) comment (newTable);
         
@@ -751,6 +730,33 @@ public abstract class ANSI extends DB {
             if (asIs == null) create (toBe, newRefs); else update (asIs, toBe, newRefs);                                    
         }
         
+        addIndexes (ex);
+        
+        for (Table toBe: tables) {
+            
+            PhysicalTable asIs = ex.get (toBe.getName ());
+            
+            for (Key k: toBe.getKeys ().values ()) {
+
+                PhysicalKey keyToBe = toPhysical (toBe, k);
+
+                PhysicalKey keyAsIs = asIs == null ? null : (PhysicalKey) asIs.getKeys ().get (keyToBe.getName ());
+                
+                if (keyAsIs == null) {
+
+                    create (toBe, keyToBe);
+
+                }
+                else if (!keyAsIs.equals (keyToBe)) {
+
+                    recreate (toBe, keyToBe);
+
+                }                
+                
+            }
+            
+        }                
+        
         for (Table t: tables) updateData (t);        
         
         for (View v: views) update (v);
@@ -788,5 +794,6 @@ public abstract class ANSI extends DB {
     protected abstract String getTypeName (PhysicalCol col);
     protected abstract void update (View view) throws SQLException;
     protected abstract void update (Table table, Trigger trg) throws SQLException;
+    protected abstract void addIndexes (PhysicalModel m) throws SQLException;
     
 }

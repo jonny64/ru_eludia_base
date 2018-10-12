@@ -477,6 +477,13 @@ public final class Oracle extends ANSI {
             
         });
 
+        return m;
+                      
+    }
+
+    @Override
+    protected void addIndexes (PhysicalModel m) throws SQLException {
+        
         forEach (new QP ("SELECT * FROM user_indexes WHERE index_type LIKE '%NORMAL'"), rs -> {
             
             PhysicalTable t = m.get (rs.getString ("TABLE_NAME"));
@@ -510,9 +517,7 @@ public final class Oracle extends ANSI {
             key.getParts ().add (part);
             
         });
-
-        return m;
-                      
+        
     }
 
     @Override
