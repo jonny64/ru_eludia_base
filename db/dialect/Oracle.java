@@ -149,6 +149,8 @@ public final class Oracle extends ANSI {
     }
     
     protected String getTypeName (PhysicalCol col) {
+        
+        if (col == null) throw new IllegalStateException ("PhysicalCol col==null: probably, adjustTable is not called");
 
         switch (col.getType ()) {
             case BLOB:
