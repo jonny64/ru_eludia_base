@@ -542,26 +542,24 @@ public abstract class ANSI extends DB {
     protected void setPk (Table table) throws SQLException {        
         d0 (genSetPkSql (table));
     }
-    
+
     protected final void create (Table table, List<Ref> newRefs) throws SQLException {
-        
+
         logger.fine ("Creating " + table.getName ());
-        
+
         d0 (genCreateSql (table));
-        
+
         setPk (table);
-        
+
         comment (table);
-        
+
         for (Col col: table.getColumns ().values ()) {
-            
+
             if (col instanceof Ref) newRefs.add ((Ref) col);
 
             comment (table, col);
-            
+
         }
-        
-        for (Key key: table.getKeys ().values ()) create (table, toPhysical (table, key));
 
     }
 
