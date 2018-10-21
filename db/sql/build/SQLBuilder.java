@@ -171,7 +171,7 @@ public abstract class SQLBuilder {
             return;
         }
 
-        if (p instanceof Integer || p instanceof BigDecimal || p instanceof Long) {
+        if (p instanceof Number || p instanceof Boolean) {
             psb.append (p);
             psb.append (',');
             return;
