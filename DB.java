@@ -1623,16 +1623,16 @@ public abstract class DB implements AutoCloseable, ParamSetter {
         
         String [] key;
 
-        public UpsertBuffer (Table t, int size, String [] key) {
+        public UpsertBuffer (Table t, int size, String... key) {
             super (t, size);
             this.key = key;
         }
         
-        public UpsertBuffer (String t, int size, String [] key) {
+        public UpsertBuffer (String t, int size, String... key) {
             this (model.get (t), size, key);
         }
         
-        public UpsertBuffer (Class t, int size, String [] key) {
+        public UpsertBuffer (Class t, int size, String... key) {
             this (model.get (t), size, key);
         }
                 
@@ -1670,7 +1670,7 @@ public abstract class DB implements AutoCloseable, ParamSetter {
         String [] key;
         int cnt;
 
-        public TableUpsertBuffer (Table t, int size, Table tb, int tbSize, String [] key) throws SQLException {
+        public TableUpsertBuffer (Table t, int size, Table tb, int tbSize, String... key) throws SQLException {
             super (t, size);
             if (tbSize < size) throw new IllegalArgumentException ("tbSize (" + tbSize +  ") cannot be less than size: " + size);
             this.tbSize = tbSize;
@@ -1687,7 +1687,7 @@ public abstract class DB implements AutoCloseable, ParamSetter {
          * @param tbSize Максимальное число записей в tb
          * @param key Ключ синхронизации. Если пусто, используется первичный ключ tb
          */
-        public TableUpsertBuffer (Class t, int size, Class tb, int tbSize, String [] key) throws SQLException {
+        public TableUpsertBuffer (Class t, int size, Class tb, int tbSize, String... key) throws SQLException {
             this (model.get (t), size, model.get (tb), tbSize, key);
         }
 
