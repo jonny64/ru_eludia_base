@@ -1675,8 +1675,18 @@ public abstract class DB implements AutoCloseable, ParamSetter {
             if (tbSize < size) throw new IllegalArgumentException ("tbSize (" + tbSize +  ") cannot be less than size: " + size);
             this.tbSize = tbSize;
             this.tb = tb;
+            
+            if (key.length == 0) {
+                List<Col> pk = tb.getPk ();
+                final int len = pk.size ();
+                key = new String [len];
+                for (int i = 0; i < len; i++) key [i] = pk.get (i).getName ();
+            }
+            
             this.key = key;
+            
             clearBufferTable ();
+            
         }
 
         /**
