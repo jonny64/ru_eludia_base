@@ -5,19 +5,6 @@ public abstract class AbstractCol extends NamedObject {
     protected boolean nullable = false;
     protected int length = 0;
     protected int precision = 0;
-    int pkPos = -1;
-    
-    public final boolean isPk () {
-        return pkPos >= 0;
-    }
-
-    public final int getPkPos () {
-        return pkPos;
-    }
-
-    public final void setPkPos (int pkPos) {
-        this.pkPos = pkPos;
-    }
     
     public boolean isNullable () {
         return nullable;

@@ -1,6 +1,8 @@
 package ru.eludia.base.model.abs;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import ru.eludia.base.model.Trigger;
 
@@ -38,19 +40,33 @@ public abstract class AbstractTable<C extends AbstractCol, K extends AbstractKey
     public List<C> getPk () {
         return pk;
     }
-    
-    public String [] getPkColNames () {
-        final int size = pk.size ();
-        String [] result = new String [size];
-        for (int i = 0; i < size; i++) result [i] = pk.get (i).getName ();
-        return result;
+
+    public Collection<String> getKeyColNames () {
+        return keyColNames;
     }
     
+    Collection<String> keyColNames = Collections.EMPTY_LIST;
+    
     public final void pk (C c, String... aliases) {
+        
         add (c, aliases);
+        
         if (pk == null) pk = new ArrayList<> (1);
-        c.setPkPos (pk.size ());
+        
         pk.add (c);
+        
+        final String name = c.getName ();
+        
+        switch (pk.size ()) {
+            case 1:
+                keyColNames = Collections.singletonList (name);
+                break;
+            case 2:
+                keyColNames = new ArrayList<> (keyColNames);
+            default:
+                keyColNames.add (name);
+        }
+        
     }
     
     public final void add (C c, String... aliases) {

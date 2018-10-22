@@ -523,7 +523,7 @@ public final class Oracle extends ANSI {
     }
 
     @Override
-    protected void genUpsertSql (TableSQLBuilder b, Roster<PhysicalCol> keyCols) {
+    protected void genUpsertSql (TableSQLBuilder b) {
         b.append ("MERGE INTO ");
 
         b.append (b.getTable ().getName ());        
@@ -536,7 +536,7 @@ public final class Oracle extends ANSI {
         b.setLastChar (' ');
         b.append ("FROM DUAL) \"__new\" ON (");
         
-        for (PhysicalCol col: keyCols.values ()) {            
+        for (PhysicalCol col: b.getKeyCols ()) {            
             if (b.getLastChar () != '(') b.append (" AND");
             b.append ("\"__old\".");
             b.append (col.getName ());
@@ -546,12 +546,11 @@ public final class Oracle extends ANSI {
         
         b.append (") ");
 
-        if (b.getCols ().size () > keyCols.size ()) {
+        if (!b.getNonKeyCols ().isEmpty ()) {
 
             b.append ("WHEN MATCHED THEN UPDATE SET ");
-            for (PhysicalCol col: b.getCols ()) {
+            for (PhysicalCol col: b.getNonKeyCols ()) {
                 String name = col.getName ();
-                if (keyCols.containsKey (name)) continue;
                 b.append (name);
                 b.append ("=\"__new\".");
                 b.append (name);

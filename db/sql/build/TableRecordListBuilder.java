@@ -2,6 +2,7 @@ package ru.eludia.base.db.sql.build;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -18,8 +19,8 @@ public class TableRecordListBuilder extends TableSQLBuilder {
     
     List<Map <String, Object>> records;
 
-    public TableRecordListBuilder (Table table, List<Map<String, Object>> records) {
-        super (table, records.isEmpty () ? Collections.EMPTY_SET : records.get (0).keySet ());
+    public TableRecordListBuilder (Table table, List<Map<String, Object>> records, Collection<String> keyColNames) {
+        super (table, records.isEmpty () ? Collections.EMPTY_SET : records.get (0).keySet (), keyColNames);
         this.records = records;
     }
 

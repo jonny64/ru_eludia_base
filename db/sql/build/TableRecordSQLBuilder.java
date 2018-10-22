@@ -2,6 +2,7 @@ package ru.eludia.base.db.sql.build;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.Collection;
 import java.util.Map;
 import ru.eludia.base.model.Table;
 import ru.eludia.base.db.util.ParamSetter;
@@ -16,8 +17,8 @@ public class TableRecordSQLBuilder extends TableSQLBuilder {
 
     Map <String, Object> record;
 
-    public TableRecordSQLBuilder (Table table, Map<String, Object> record) {
-        super (table, record.keySet ());
+    public TableRecordSQLBuilder (Table table, Map<String, Object> record, Collection<String> keyColNames) {
+        super (table, record.keySet (), keyColNames);
         this.record = record;
     }
 

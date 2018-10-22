@@ -164,15 +164,13 @@ public abstract class ANSI extends DB {
         b.append ("UPDATE ");
         b.append (b.getTable ().getName ());
         b.append (" SET ");
-        for (PhysicalCol i: b.getCols ()) {
-            if (i.isPk ()) continue;
+        for (PhysicalCol i: b.getNonKeyCols ()) {
             b.append (i.getName ());
             b.append ("=?,");
         }
         b.setLastChar (' ');
         b.append ("WHERE ");
-        for (PhysicalCol i: b.getCols ()) {
-            if (!i.isPk ()) continue;
+        for (PhysicalCol i: b.getKeyCols ()) {
             if (b.getLastChar () == '?') b.append (" AND ");
             b.append (i.getName ());
             b.append ("=?");
@@ -645,7 +643,7 @@ public abstract class ANSI extends DB {
         
         if (data.isEmpty ()) return;
         
-        upsert (t, data, null);
+        upsert (t, data);
         
     }
     
@@ -674,7 +672,6 @@ public abstract class ANSI extends DB {
         
         physical.setRemark   (canonical.getRemark  ());
         physical.setNullable (col.isNullable ());
-        physical.setPkPos    (col.getPkPos   ());
         
         adjustDefaultValue (col, physical);
         
