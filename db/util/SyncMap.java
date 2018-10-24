@@ -2,6 +2,9 @@ package ru.eludia.base.db.util;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,16 +45,36 @@ public abstract class SyncMap<T> extends HashMap<String, Map<String, Object>> {
         put (getKey (h), h);
     }
     
-    public void addAll (List<T> l) {
-        for (T o: l) add (o);
+    public void addAll (Collection<T> l) {
+        addAll (l, Collections.EMPTY_MAP);
     }
     
-    public void add (T o) {
+    public void addAll (Collection<T> l, Map<String, Object> parent) {
+        for (T o: l) add (o, parent);
+    }
+    
+    public void add (T o, Map<String, Object> parent) {
         Map<String, Object> h = HASH ();
+        h.putAll (parent);
         setFields (h, o);
         addRecord (h);
     }
-        
+
+    public Object getPk (T o) {
+        final Map<String, Object> r = toRecord (o);        
+        return r == null ? null : r.get (getTable ().getPk ().get (0).getName ());
+    }
+
+    public Map<String, Object> toRecord (T o) {
+        return o == null ? null : get (getKey (o));
+    }
+
+    public String getKey (T o) {
+        Map<String, Object> h = HASH ();
+        setFields (h, o);
+        return getKey (h);
+    }
+    
     public String getKey (Map<String, Object> h) {
         
         StringBuilder sb = new StringBuilder ();
@@ -85,12 +108,8 @@ public abstract class SyncMap<T> extends HashMap<String, Map<String, Object>> {
         
         List <Map<String, Object>> records = new ArrayList (size ());
         
-        List <String> virtualColNames = new ArrayList ();
-        for (Col c: getTable ().getColumns ().values ()) if (c.toPhysical ().isVirtual ()) virtualColNames.add (c.getName ());
-        
         for (Map<String, Object> i: values ()) {
             i.putAll (commonPart);
-            for (String v: virtualColNames) i.remove (v);
             records.add (i);
         }
         
@@ -104,7 +123,11 @@ public abstract class SyncMap<T> extends HashMap<String, Map<String, Object>> {
         old.putAll (this);
         logger.info ("old=" + old);
         
-        db.upsert (getTable (), records, getKeyFields ());
+        ArrayList<String> key = new ArrayList<> (getKeyFields ().length + commonPart.size ());
+        key.addAll (Arrays.asList (getKeyFields ()));
+        key.addAll (commonPart.keySet ());
+        
+        db.upsert (getTable (), records, key.toArray (getKeyFields ()));
         
         reload  ();
         logger.info ("this=" + this);

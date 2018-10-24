@@ -550,6 +550,7 @@ public final class Oracle extends ANSI {
 
             b.append ("WHEN MATCHED THEN UPDATE SET ");
             for (PhysicalCol col: b.getNonKeyCols ()) {
+                if (col.isVirtual ()) continue;
                 String name = col.getName ();
                 b.append (name);
                 b.append ("=\"__new\".");
@@ -562,12 +563,14 @@ public final class Oracle extends ANSI {
         
         b.append ("WHEN NOT MATCHED THEN INSERT (");
         for (PhysicalCol col: b.getCols ()) {
+            if (col.isVirtual ()) continue;
             b.append (col.getName ());
             b.append (',');
         }
         b.setLastChar (')');
         b.append (" VALUES (");
         for (PhysicalCol col: b.getCols ()) {
+            if (col.isVirtual ()) continue;
             b.append ("\"__new\".");
             b.append (col.getName ());
             b.append (',');
