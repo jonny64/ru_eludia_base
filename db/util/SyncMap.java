@@ -33,7 +33,8 @@ public abstract class SyncMap<T> extends HashMap<String, Map<String, Object>> {
     public void reload () throws SQLException {        
         clear ();
         Select select = db.getModel ().select (getTable (), "*");        
-        commonPart.forEach ((k, v) -> {select.and (k, v);});        
+        commonPart.forEach  ((k, v) -> {select.and (k, v);});        
+        for (String i: getKeyFields ()) select.and (i + " IS NOT NULL");
         db.forEach (select, (rs) -> {addRecord (db.HASH (rs));});
     }
     
