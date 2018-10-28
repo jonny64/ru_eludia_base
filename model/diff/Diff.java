@@ -1,14 +1,13 @@
 package ru.eludia.base.model.diff;
 
 import java.sql.JDBCType;
-import java.util.function.BiFunction;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import ru.eludia.base.DB;
 import ru.eludia.base.model.phys.PhysicalCol;
 
 public final class Diff {
-
+    
     NullAction nullAction;
     TypeAction typeAction;
     boolean isCommentChanged;
@@ -51,8 +50,6 @@ public final class Diff {
         }
 
         logger.log (Level.FINE, toBe + " - " + asIs + " = " + this);
-
-        if (nullAction == NullAction.UNSET && toBe.getDef () == null) throw new IllegalArgumentException ("When setting NOT NULL, a DEFAULT must be provided: " + asIs + " -} " + toBe);
         
     }
 

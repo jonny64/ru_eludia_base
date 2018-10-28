@@ -81,6 +81,7 @@ public final class PhysicalCol extends AbstractCol {
         if (def == null) job.addNull ("def"); else job.add ("def", def);
 
         return job           
+            .add ("nullable", nullable)
             .add ("virtual", virtual)
             .add ("remark", remark)
         .build ().toString ();

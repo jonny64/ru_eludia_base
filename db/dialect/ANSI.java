@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 import ru.eludia.base.DB;
 import ru.eludia.base.db.sql.build.QP;
 import ru.eludia.base.db.sql.build.TableSQLBuilder;
@@ -494,27 +495,37 @@ public abstract class ANSI extends DB {
     protected void adjustNullability (Table table, PhysicalCol col, NullAction act) throws SQLException {
         
         if (act == null) return;
-        
+                
         switch (act) {
             case SET:
                 setNullability (table, col, "NULL");
                 break;
             case UNSET:
-                fillInNulls (table, col);
-                setNullability (table, col, "NOT NULL");
+                setNotNull (table, col);
                 break;
         }
         
     }    
 
+    private void setNotNull (Table table, PhysicalCol col) throws SQLException {
+        
+        if (col.getDef () == null) {
+            logger.warning ("Cannot SET NOT NULL " + table.getName () + '.' + col.getName () + ", missing DEFAULT");
+            return;
+        }
+        
+        fillInNulls (table, col);
+        
+        setNullability (table, col, "NOT NULL");
+        
+    }
+
     protected void update (Table table, PhysicalCol asIs, PhysicalCol toBe) throws SQLException {
-
-        logger.fine ("Updating " + table + '.' + asIs.getName () + ": " + asIs + " to " + toBe);
-
+        
         Diff diff = new Diff (asIs, toBe, this);
-        
+                
         adjustNullability (table, toBe, diff.getNullAction ());
-        
+
         update (table, toBe, diff.getTypeAction ());
 
         if (diff.isCommentChanged ()) comment (table, toBe);
@@ -674,7 +685,7 @@ public abstract class ANSI extends DB {
         physical.setNullable (col.isNullable ());
         
         adjustDefaultValue (col, physical);
-        
+
         return physical;
         
     }

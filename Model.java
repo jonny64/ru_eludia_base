@@ -71,23 +71,16 @@ public class Model extends AbstractModel<Col, Key, Table> {
      * @param dsName JNDI-имя источника данных
      * @param packageNames имена java-пакетов с описаниями таблиц
      */
-    public Model (DataSource ds, String... packageNames) {
+    public Model (DataSource ds, String... packageNames) throws IOException, SQLException {
         
         this.ds = ds;
                 
-        try {
-            
-            for (String i: packageNames) addPackage (i);
+        for (String i: packageNames) addPackage (i);
                         
-            try (DB db = getDb ()) {                
-                db.adjustModel  ();
-                db.updateSchema ();
-            }            
-            
-        }
-        catch (Exception ex) {
-            throw new IllegalStateException (ex);
-        }
+        try (DB db = getDb ()) {                
+            db.adjustModel  ();
+            db.updateSchema ();
+        }            
                        
     }
     

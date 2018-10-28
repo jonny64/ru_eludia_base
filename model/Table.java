@@ -13,7 +13,6 @@ import java.util.Map;
 import javax.json.JsonObject;
 import ru.eludia.base.DB;
 import ru.eludia.base.db.dialect.Oracle;
-import ru.eludia.base.model.def.Def;
 
 public abstract class Table extends AbstractTable<Col, Key> {
     
@@ -52,53 +51,21 @@ public abstract class Table extends AbstractTable<Col, Key> {
     public Table (String name, String remark) {
         super (name, remark);
     }
-        
-    protected final void pk (String name, Type type, String remark) {
-        pk (new Col (name, type, remark));
-    }
-    
-    protected final void pk (String name, Type type, int length, String remark) {
-        pk (new Col (name, type, length, remark));
+            
+    protected final void pk (Object name, Type type, Object... p) {
+        pk (new Col (name, type, p));
     }
 
-    protected final void pk (String name, Type type, Def def, String remark) {
-        pk (new Col (name, type, def, remark));
+    protected final void col (Object name, Type type, Object... p) {
+        add (new Col (name, type, p));
     }
-
-    protected final void col (String name, Type type, String remark) {
-        add (new Col (name, type, remark));
-    }
-    
-    protected final void col (String name, Type type, Def def, String remark) {
-        add (new Col (name, type, def, remark));
-    }
-
-    protected final void col (String name, Type type, int length, String remark) {
-        add (new Col (name, type, length, remark));
-    }
-    
-    protected final void col (String name, Type type, int length, Def def, String remark) {
-        add (new Col (name, type, length, def, remark));
-    }
-
-    protected final void col (String name, Type type, int length, int precision, String remark) {
-        add (new Col (name, type, length, precision, remark));
-    }
-    
-    protected final void col (String name, Type type, int length, int precision, Def def, String remark) {
-        add (new Col (name, type, length, precision, def, remark));
-    }    
-    
+      
     protected final void pkref (String name, Class t, String remark) {
         pk (new Ref (name, t, remark));
     }
-    
-    protected final void fk (String name, Class t, String remark) {
-        add (new Ref (name, t, remark));
-    }
-    
-    protected final void fk (String name, Class t, Def def, String remark) {
-        add (new Ref (name, t, def, remark));
+        
+    protected final void fk (String name, Class t, Object... p) {
+        add (new Ref (name, t, p));
     }
 
     protected final void key (String name, String... parts) {
@@ -111,16 +78,11 @@ public abstract class Table extends AbstractTable<Col, Key> {
         add (key);
     }
 
-    protected final void ref (String name, Class t, Def def, String remark) {
-        add (new Ref (name, t, def, remark));
+    protected final void ref (String name, Class t, Object... p) {
+        add (new Ref (name, t, p));
         add (new Key (name, name));        
     }
-    
-    protected final void ref (String name, Class t, String remark) {
-        add (new Ref (name, t, remark));
-        add (new Key (name, name));        
-    }
-    
+        
     protected final void item (Object... o) {
         if (data.isEmpty ()) data = new ArrayList<> (1);
         data.add (DB.HASH (o));
@@ -129,6 +91,10 @@ public abstract class Table extends AbstractTable<Col, Key> {
     protected final void trigger (String when, String what) {
         Trigger trg = new Trigger (when, what);
         triggers.add (trg);
+    }
+    
+    protected final void cols (Class clazz) {                
+        for (Object value: clazz.getEnumConstants ()) add (((ColEnum) value).getCol ());                
     }
 
     protected final void data (Class clazz) {

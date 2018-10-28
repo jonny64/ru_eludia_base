@@ -1,7 +1,11 @@
 package ru.eludia.base.model.abs;
 
+import java.util.logging.Logger;
+
 public abstract class AbstractCol extends NamedObject {
     
+    protected final Logger logger = Logger.getLogger (this.getClass ().getName ());
+
     protected boolean nullable = false;
     protected int length = 0;
     protected int precision = 0;
@@ -31,7 +35,7 @@ public abstract class AbstractCol extends NamedObject {
     }
 
     public AbstractCol (String name, String remark) {        
-        super (name);
+        super (name.toLowerCase ());
         if (remark != null) this.remark = remark;
     }
 
@@ -47,7 +51,7 @@ public abstract class AbstractCol extends NamedObject {
     }
 
     public AbstractCol (String name, int length, int precision) {
-        super (name);
+        super (name.toLowerCase ());
         this.length = length;
         this.precision = precision;
     }

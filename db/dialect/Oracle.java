@@ -768,10 +768,18 @@ public final class Oracle extends ANSI {
     
     @Override
     protected void checkModel () throws SQLException {
+
+        try {
+            d0 ("PURGE RECYCLEBIN");
+        }
+        catch (SQLException ex) {
+            logger.log (Level.SEVERE, "Cannot PURGE RECYCLEBIN", ex);
+        }
         
         forFirst (new QP ("SELECT NAME, TEXT, TYPE FROM USER_ERRORS"), rs -> {
-        throw new IllegalStateException("USER_ERROR: " + rs.getString ("TYPE") + " " + rs.getString ("NAME") + " " + rs.getString ("TEXT"));
+            throw new IllegalStateException (rs.getString ("TYPE") + " " + rs.getString ("NAME") + ": " + rs.getString ("TEXT"));
         });
+        
     };
     
     public enum TemporalityType {

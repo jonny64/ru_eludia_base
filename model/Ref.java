@@ -9,13 +9,8 @@ public class Ref extends Col {
     Table targetTable;
     Col targetCol;
     
-    public Ref (String name, Class t, Def def, String remark) {
-        super (name, null, def, remark);
-        this.c = t;
-    }    
-    
-    public Ref (String name, Class t, String remark) {
-        super (name, null, remark);
+    public Ref (Object name, Class t, Object... p) {
+        super (name, null, p);
         this.c = t;
     }    
     
