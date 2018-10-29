@@ -62,7 +62,8 @@ public abstract class TableSQLBuilder extends SQLBuilder {
             Col column = table.getColumn (i);
             if (column == null) continue;
             if (isInKey (column)) continue;
-            cols.add (column.toPhysical ());
+            final PhysicalCol phy = column.toPhysical ();
+            if (!cols.contains (phy)) cols.add (phy);
         }
         
         final int n = cols.size ();
