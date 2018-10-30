@@ -68,11 +68,11 @@ public abstract class Table extends AbstractTable<Col, Key> {
         add (new Ref (name, t, p));
     }
 
-    protected final void key (String name, String... parts) {
+    protected final void key (String name, Object... parts) {
         add (new Key (name, parts));
     }
     
-    protected final void unique (String name, String... parts) {
+    protected final void unique (String name, Object... parts) {
         Key key = new Key (name, parts);
         key.setUnique (true);
         add (key);
@@ -94,7 +94,7 @@ public abstract class Table extends AbstractTable<Col, Key> {
     }
     
     protected final void cols (Class clazz) {                
-        for (Object value: clazz.getEnumConstants ()) add (((ColEnum) value).getCol ());                
+        for (Object value: clazz.getEnumConstants ()) add (((ColEnum) value).getCol ().clone ());
     }
 
     protected final void data (Class clazz) {

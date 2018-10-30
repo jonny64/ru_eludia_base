@@ -1,7 +1,6 @@
 package ru.eludia.base.model;
 
 import java.util.List;
-import ru.eludia.base.model.def.Def;
 
 public class Ref extends Col {
     
@@ -12,7 +11,12 @@ public class Ref extends Col {
     public Ref (Object name, Class t, Object... p) {
         super (name, null, p);
         this.c = t;
-    }    
+    }
+
+    @Override
+    public Col clone () {
+        return new Ref (name, c, def, remark); 
+    }
     
     @Override
     public void setTable (Table table) {

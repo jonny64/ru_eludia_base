@@ -49,7 +49,7 @@ public abstract class AbstractTable<C extends AbstractCol, K extends AbstractKey
     
     public final void pk (C c, String... aliases) {
         
-        add (c, aliases);
+        if (!columns.containsKey (c.getName ())) add (c, aliases);
         
         if (pk == null) pk = new ArrayList<> (1);
         

@@ -181,10 +181,14 @@ public abstract class DB implements AutoCloseable, ParamSetter {
         
         Map <String, Object> m = new HashMap (len >> 1);
         
-        for (int i = 0; i < len; i += 2) m.put (o [i].toString (), o [i + 1]);
+        for (int i = 0; i < len; i += 2) m.put (o [i].toString ().toLowerCase (), o [i + 1]);
         
         return m;
         
+    }
+
+    public static void set (Map<String, Object> h, Object k, Object v) {
+        h.put (k.toString ().toLowerCase (), v);
     }
     
     /**
