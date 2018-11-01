@@ -282,7 +282,7 @@ public abstract class DB implements AutoCloseable, ParamSetter {
      */
     public final void insert (Table t, List<Map <String, Object>> records) throws SQLException {        
         if (records == null || records.isEmpty ()) return;       
-        TableRecordListBuilder b = new TableRecordListBuilder (t, records, Collections.EMPTY_LIST);
+        TableRecordListBuilder b = new TableRecordListBuilder (t, records, null);
         genInsertSql (b);
         d0 (b);        
     }
