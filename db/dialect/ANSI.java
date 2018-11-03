@@ -270,6 +270,10 @@ public abstract class ANSI extends DB {
     
     void addSelectFilter (QP qp, Part part, Filter f) {
         
+        Filter nextFilter = f.getNextFilter ();
+        
+        if (nextFilter != null) qp.append ('(');
+        
         Predicate p = f.getPredicate ();
 
         if (p.isNot ()) qp.append ("NOT(");
@@ -291,6 +295,12 @@ public abstract class ANSI extends DB {
         if (p.isOrNull ()) qp.append (')');
         
         if (p.isNot ()) qp.append (')');
+        
+        if (nextFilter != null) {
+            qp.append (" OR ");
+            addSelectFilter (qp, part, nextFilter);
+            qp.append (')');
+        }
 
     }
     
