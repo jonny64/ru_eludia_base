@@ -53,7 +53,9 @@ public abstract class AbstractTable<C extends AbstractCol, K extends AbstractKey
     Collection<String> keyColNames = Collections.EMPTY_LIST;
     
     public final void pk (ColEnum c, String... aliases) {
-        pk (getColumn (c), aliases);
+        final C column = getColumn (c);
+        if (column == null) throw new IllegalArgumentException ("Column " + c + " not found in " + this.getName () + ". Existing column names are " + getColumns ().keySet ());
+        pk (column, aliases);
     }
     
     public final void pk (C c, String... aliases) {

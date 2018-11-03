@@ -87,6 +87,7 @@ public abstract class Part<T extends Part> {
     public Filter andEither (ColEnum col, Operator op, Object... values) {
         if (filters.isEmpty ()) filters = new ArrayList<> ();
         final Filter filter = new Filter (this, col.getCol ().getName ().toLowerCase (), new Predicate (op, values));
+        if (!filter.isOff ()) filters.add (filter);
         return filter;
     }
     

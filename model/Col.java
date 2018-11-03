@@ -24,6 +24,12 @@ public class Col extends AbstractCol implements Cloneable {
     public Type getType () {
         return type;
     }
+
+    public Col clone (String name) {
+        Col c = clone ();
+        c.name = name;
+        return c;
+    }
     
     @Override
     public Col clone () {
