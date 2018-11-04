@@ -9,8 +9,10 @@ import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -775,7 +777,7 @@ public abstract class ANSI extends DB {
         
         for (Table t: tables) updateData (t);        
         
-        for (View v: views) update (v);
+        updateViews (views);        
         
         for (Ref ref: newRefs) create (ref);
         
@@ -783,6 +785,41 @@ public abstract class ANSI extends DB {
 
         checkModel ();
 
+    }
+
+    private void updateViews (List<View> views) throws SQLException {
+        
+        int tries = views.size ();
+        
+        SQLException lastException = null;
+        
+        Set<View> passed = new HashSet (tries);
+        
+        for (int i = 0; i < tries; i ++) {
+            
+            lastException = null;
+
+            for (View v: views) {
+                
+                if (passed.contains (v)) continue;
+                
+                try {
+                    update (v);
+                    passed.add (v);
+                }
+                catch (SQLException e) {
+                    logger.warning ("Exception occured, will retry with " + v.getName () + ". The message was " + e.getMessage ());
+                    lastException = e;                    
+                }
+                
+            }
+
+            if (lastException == null) return;
+            
+        }
+        
+        throw lastException;
+        
     }
 
     public void updateSchema () throws SQLException {

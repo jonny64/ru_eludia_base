@@ -646,7 +646,7 @@ public final class Oracle extends ANSI {
 
     @Override
     protected void update (View view)  throws SQLException {
-        d0 ("CREATE OR REPLACE FORCE VIEW " + view.getName () + " AS " + view.getSQL ());
+        d0 ("CREATE OR REPLACE VIEW " + view.getName () + " AS " + view.getSQL ());
     }
 
     @Override
