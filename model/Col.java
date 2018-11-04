@@ -21,6 +21,10 @@ public class Col extends AbstractCol implements Cloneable {
         return def;
     }
 
+    public void setDef (Def def) {
+        this.def = def;
+    }
+
     public Type getType () {
         return type;
     }
