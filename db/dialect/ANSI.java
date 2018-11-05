@@ -791,6 +791,8 @@ public abstract class ANSI extends DB {
         
         int tries = views.size ();
         
+        if (tries == 0) return;
+        
         SQLException lastException = null;
         
         Set<View> passed = new HashSet (tries);
