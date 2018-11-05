@@ -360,7 +360,7 @@ public final class Oracle extends ANSI {
     
     private String stripQuotes (String s) {
 
-        if (s.indexOf ('"') < 0) return s;
+        if (s.indexOf ('"') < 0 && s.indexOf (' ') < 0) return s;
 
         StringBuilder sb = new StringBuilder ();
 
