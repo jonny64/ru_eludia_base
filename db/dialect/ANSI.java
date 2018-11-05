@@ -9,6 +9,7 @@ import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +17,8 @@ import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import ru.eludia.base.DB;
 import ru.eludia.base.db.sql.build.QP;
 import ru.eludia.base.db.sql.build.TableSQLBuilder;
@@ -670,16 +673,53 @@ public abstract class ANSI extends DB {
         
     }
     
+    private static final Pattern RE_FIELD = Pattern.compile ("(\"[A-Za-z_][A-Za-z0-9_]*\")");
+    
     @Override
     public final void adjustTable (Table t) {
         
         t.setModel (model);
-                
+
+        Map<String, PhysicalCol> physicalVirtualCols = new HashMap<> ();
+
         for (Col c: t.getColumns ().values ()) {
             c.setTable (t);
             adjustCol (c);
+            PhysicalCol phy = c.toPhysical ();
+            if (phy.isVirtual ()) physicalVirtualCols.put ('"' + phy.getName ().toUpperCase () + '"', phy);
         }
-        
+
+        int tries = physicalVirtualCols.size ();
+
+        for (int n = 0; n < tries; n ++) {
+
+            boolean found = false;
+
+            for (PhysicalCol v: physicalVirtualCols.values ()) {
+
+                String def = v.getDef ();
+
+                Matcher m = RE_FIELD.matcher (def);
+                
+                while (m.find ()) {
+                    String key = m.group ().toUpperCase ();
+                    if (!physicalVirtualCols.containsKey (key)) continue;
+                    def = def.replace (m.group (), physicalVirtualCols.get (key).getDef ());
+                    found = true;
+                }
+
+                if (!found) continue;
+
+                logger.info (t.getName () + '.' + v.getName () + ": " + v.getDef () + " .. " + def);
+
+                v.setDef (def);
+
+            }
+
+            if (!found) break;
+
+        }
+
     }
 
     private final void adjustCol (Col col) {
