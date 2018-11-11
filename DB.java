@@ -1333,6 +1333,37 @@ public abstract class DB implements AutoCloseable, ParamSetter {
     }
         
     /**
+     * Извлечение выборки по запросу в виде списка
+     * @param qp запрос
+     * @return List записей, полученных как HASH
+     * @throws SQLException
+     */
+    
+    public final List <Map <String, Object>> getList (QP qp) throws SQLException {
+        
+        List <Map <String, Object>> result = new ArrayList<> ();
+        
+        forEach (qp, rs -> {
+            Map<String, Object> r = HASH (rs);
+            result.add (r);
+        });
+                
+        return result;
+        
+    }
+
+    /**
+     * Извлечение выборки по запросу в виде списка
+     * @param select запрос
+     * @return List записей, полученных как HASH
+     * @throws SQLException
+     */
+    
+    public final List <Map <String, Object>> getList (Select select) throws SQLException {
+        return getList (toQP (select));
+    }
+    
+    /**
      * Извлечение выборки по запросу в виде индекса: ключ-запись
      * @param s запрос
      * @param key имя ключевого поля (если null — используется имя 1-го поля PK главной таблицы запроса)
