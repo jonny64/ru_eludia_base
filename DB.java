@@ -130,13 +130,28 @@ public abstract class DB implements AutoCloseable, ParamSetter {
     
     @Override
     public void close () {
+        
         try {
             if (!cn.getAutoCommit ()) cn.rollback ();
+        }
+        catch (SQLException ex) {
+            logger.log (Level.SEVERE, "Can't rollback last transaction", ex);
+        }
+
+        try {
+            if (!cn.getAutoCommit ()) cn.setAutoCommit (true);
+        }
+        catch (SQLException ex) {
+            logger.log (Level.SEVERE, "Can't set back AutoCommit", ex);
+        }
+        
+        try {
             cn.close ();
         }
         catch (SQLException ex) {
-            throw new IllegalStateException (ex);
+            logger.log (Level.SEVERE, "Can't close connection", ex);
         }
+                
     }    
     
     /**
