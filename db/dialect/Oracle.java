@@ -182,9 +182,9 @@ public final class Oracle extends ANSI {
 
     @Override
     protected final void comment (Table table, AbstractCol col) throws SQLException {
-        
-        d0 ("COMMENT ON COLUMN " + table.getName () + '.' + col.getName () + " IS '" + col.getRemark () + "'");
-        
+
+        d0 ("COMMENT ON COLUMN " + table.getName () + '.' + col.getName () + " IS '" + col.getRemark ().replaceAll ("'", "''") + "'");
+
     }
 
     @Override

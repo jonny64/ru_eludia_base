@@ -847,6 +847,7 @@ public abstract class ANSI extends DB {
                 
                 try {
                     update (v);
+                    for (Col col: v.getColumns ().values ()) comment (v, col);
                     passed.add (v);
                 }
                 catch (SQLException e) {
@@ -857,7 +858,7 @@ public abstract class ANSI extends DB {
             }
 
             if (lastException == null) return;
-            
+
         }
         
         throw lastException;
