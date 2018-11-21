@@ -6,6 +6,7 @@ import java.beans.PropertyDescriptor;
 import java.io.InputStream;
 import java.io.StringReader;
 import java.lang.reflect.Method;
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.GregorianCalendar;
 import java.util.List;
@@ -385,6 +386,11 @@ public class TypeConverter {
                     final String s = value.toString ();
                     if (s.isEmpty ()) continue;
                     writeMethod.invoke (javaBean, s);
+                }
+                else if (BigDecimal.class.equals (type)) {
+                    final String s = value.toString ();
+                    if (s.isEmpty ()) continue;
+                    writeMethod.invoke (javaBean, new BigDecimal (s));
                 }
                 else if (Boolean.class.equals (type) || "boolean".equals (type.getName ())) {
                     final String s = value.toString ();
