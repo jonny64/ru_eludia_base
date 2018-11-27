@@ -75,7 +75,7 @@ public abstract class ANSI extends DB {
 
     }
     
-    protected void setNotNullParam (PreparedStatement st, int n, JDBCType type, Object value) throws SQLException {
+    protected void setNotNullParam (PreparedStatement st, int n, JDBCType type, int length, Object value) throws SQLException {
         
         if (value instanceof Def) value = ((Def) value).getValue ();
         
@@ -98,9 +98,14 @@ public abstract class ANSI extends DB {
             case BLOB: 
                 st.setBinaryStream (n, to.binaryStream (value));
                 break;
-
+                
             default: 
-                st.setString (n, value.toString ());
+                String s = value.toString ();
+                if (length > 0 && s.length () > length) {
+                    logger.info ("Truncating '" + s + "' to first " + length + " chars");
+                    s = s.substring (0, length);
+                }
+                st.setString (n, s);
         
         }
         
@@ -145,9 +150,9 @@ public abstract class ANSI extends DB {
     }
     
     @Override
-    public final void setParam (PreparedStatement st, int n, JDBCType type, Object value) throws SQLException {
+    public final void setParam (PreparedStatement st, int n, JDBCType type, int length, Object value) throws SQLException {
         
-        if (value == null) setNullParam (st, n, type); else setNotNullParam (st, n, type, value);
+        if (value == null) setNullParam (st, n, type); else setNotNullParam (st, n, type, length, value);
         
     }
 

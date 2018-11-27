@@ -93,7 +93,7 @@ public abstract class TableSQLBuilder extends SQLBuilder {
 
             Object value = r.get (col.getName ());
             
-            ps.setParam (st, n, col.getType (), value);
+            ps.setParam (st, n, col.getType (), col.getLength (), value);
             
             logParam (value);
 
