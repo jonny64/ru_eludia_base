@@ -9,4 +9,8 @@ public final class Bool extends Num {
         super (value);
     }
     
+    public static Bool valueOf (Boolean b) {
+        return b ? Bool.TRUE : Bool.FALSE;
+    }
+    
 }

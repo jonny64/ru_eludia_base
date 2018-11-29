@@ -1,6 +1,7 @@
 package ru.eludia.base.model.def;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 
 public class Num extends Const {
     
@@ -8,6 +9,21 @@ public class Num extends Const {
     
     public static final Num ZERO = new Num (BigDecimal.ZERO);
     public static final Num ONE  = new Num (BigDecimal.ONE);
+    public static final Num TEN  = new Num (BigDecimal.TEN);
+    
+    public static Num valueOf (BigDecimal n) {
+        if (BigDecimal.ZERO.equals (n)) return ZERO;
+        if (BigDecimal.ONE.equals (n)) return ONE;
+        if (BigDecimal.TEN.equals (n)) return TEN;
+        throw new IllegalArgumentException ("Invalid BigDecimal DEFAULT value: " + n);
+    }
+    
+    public static Num valueOf (BigInteger n) {
+        if (BigInteger.ZERO.equals (n)) return ZERO;
+        if (BigInteger.ONE.equals (n)) return ONE;
+        if (BigInteger.TEN.equals (n)) return TEN;
+        throw new IllegalArgumentException ("Invalid BigInteger DEFAULT value: " + n);
+    }
 
     public Num (BigDecimal value) {
         this.value = value;
