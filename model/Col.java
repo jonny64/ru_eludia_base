@@ -1,13 +1,10 @@
 package ru.eludia.base.model;
 
-import java.math.BigDecimal;
-import java.math.BigInteger;
 import javax.json.Json;
 import javax.json.JsonObjectBuilder;
 import ru.eludia.base.model.abs.AbstractCol;
-import ru.eludia.base.model.def.Bool;
 import ru.eludia.base.model.def.Def;
-import ru.eludia.base.model.def.Num;
+import ru.eludia.base.model.def.Null;
 import ru.eludia.base.model.phys.PhysicalCol;
 
 public class Col extends AbstractCol implements Cloneable {
@@ -76,7 +73,10 @@ public class Col extends AbstractCol implements Cloneable {
         
         def = Def.valueOf (p [len - 2]);
         
-        if (def == null) nullable = true;
+        if (def instanceof Null) {
+            def = null;
+            nullable = true;
+        }
 
         if (p [0] instanceof Integer) {
             length = (Integer) p [0];

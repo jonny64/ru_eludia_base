@@ -27,6 +27,8 @@ public abstract class Def {
      * Для определения полей, автоматически помечающих записи случайными UUID.
      */
     public static final UUID NEW_UUID = new UUID ();
+
+    public static final Null NULL = new Null ();
     
     /**
      * Генератор значений для подстановки в качестве параметров запросов
@@ -35,7 +37,7 @@ public abstract class Def {
     public abstract Object getValue ();
     
     public static final Def valueOf (Object o) {
-        if (o == null) return null;
+        if (o == null) return NULL;
         if (o instanceof Def) return (Def) o;
         if (o instanceof Boolean) return Bool.valueOf ((Boolean) o);
         if (o instanceof BigInteger) return Num.valueOf ((BigInteger) o);
