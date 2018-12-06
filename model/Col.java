@@ -177,10 +177,7 @@ public class Col extends AbstractCol implements Cloneable {
                 int len = physicalCol.getLength ();
                 if (len == 0) len = random.nextInt (4000);
                 StringBuilder sb = new StringBuilder ();
-                for (int i = 0; i < len; i ++) //sb.append (32 + random.nextInt (60));
-                {
-                       
-                }
+                for (int i = 0; i < len; i ++) sb.append (random.nextInt (5) == 0 ? ' ' : (char) ('A' + random.nextInt (60)));
                 return sb.toString ();
             };
             
