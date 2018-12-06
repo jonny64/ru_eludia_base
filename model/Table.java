@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import javax.json.JsonObject;
 import ru.eludia.base.DB;
 import ru.eludia.base.db.dialect.Oracle;
@@ -176,5 +177,25 @@ public abstract class Table extends AbstractTable<Col, Key> {
         return m;
         
     }
+    
+    public Map<String, Object> randomHASH (Map<String, Object> values) {
+
+        Map<String, Object> result = DB.HASH ();
+
+        for (Col c: this.columns.values ()) {
+            
+            final String k = c.getName ();
+            
+            result.put (k,
+                values.containsKey (k) ? 
+                    values.get (k) : 
+                    c.getValueGenerator ().get ()
+            );
+
+        }
+
+        return result;
+
+    }    
 
 }

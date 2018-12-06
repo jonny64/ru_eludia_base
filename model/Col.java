@@ -1,5 +1,11 @@
 package ru.eludia.base.model;
 
+import java.math.BigInteger;
+import java.math.BigDecimal;
+import java.util.Calendar;
+import java.util.Random;
+import java.util.UUID;
+import java.util.function.Supplier;
 import javax.json.Json;
 import javax.json.JsonObjectBuilder;
 import ru.eludia.base.model.abs.AbstractCol;
@@ -125,6 +131,68 @@ public class Col extends AbstractCol implements Cloneable {
 
     public void setPhysicalCol (PhysicalCol physicalCol) {
         this.physicalCol = physicalCol;
+    }
+    
+    public static Random random = new Random ();
+    
+    public Supplier<Object> getValueGenerator () {
+        
+        switch (type) {
+            
+            case BOOLEAN: return () -> {
+                return random.nextBoolean ();
+            };
+            
+            case INTEGER: return () -> {
+                return random.nextInt (); 
+            };
+            
+            case MONEY:
+            case NUMERIC: return () -> {
+                final BigInteger bi = BigInteger.valueOf (random.nextLong ());
+                final BigDecimal raw = new BigDecimal (bi, precision);
+                int n = raw.precision () - raw.scale () - length;
+                if (n <= 0) return raw;
+                BigDecimal [] divideAndRemainder = raw.divideAndRemainder (BigDecimal.TEN.pow (n));
+                return divideAndRemainder [1];
+            };
+            
+            case UUID: return () -> {
+                return UUID.randomUUID ();
+            };
+            
+            case DATE: return () -> {
+                Calendar cal = Calendar.getInstance ();
+                cal.add (Calendar.DATE, random.nextInt (500));
+                return new java.sql.Timestamp (cal.getTimeInMillis ());
+            };
+            
+            case DATETIME:
+            case TIMESTAMP: return () -> {
+                return new java.sql.Timestamp (System.currentTimeMillis () + random.nextInt ());
+            };
+            
+            case STRING:
+            case TEXT: return () -> {
+                int len = physicalCol.getLength ();
+                if (len == 0) len = random.nextInt (4000);
+                StringBuilder sb = new StringBuilder ();
+                for (int i = 0; i < len; i ++) //sb.append (32 + random.nextInt (60));
+                {
+                       
+                }
+                return sb.toString ();
+            };
+            
+            case BINARY:
+            case BLOB: return () -> {
+                return "CAFEBABE";
+            };
+            
+            default: return null;
+            
+        }
+        
     }
 
 }
