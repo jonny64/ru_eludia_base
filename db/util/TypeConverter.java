@@ -392,6 +392,11 @@ public class TypeConverter {
                     if (s.isEmpty ()) continue;
                     writeMethod.invoke (javaBean, new BigDecimal (s));
                 }
+                else if (Integer.class.equals (type)) {
+                    final String s = value.toString ();
+                    if (s.isEmpty ()) continue;
+                    writeMethod.invoke (javaBean, new Integer (s));
+                }
                 else if (Boolean.class.equals (type) || "boolean".equals (type.getName ())) {
                     final String s = value.toString ();
                     if (s.isEmpty ()) continue;
