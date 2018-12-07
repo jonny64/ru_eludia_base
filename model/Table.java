@@ -10,10 +10,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Supplier;
 import javax.json.JsonObject;
 import ru.eludia.base.DB;
 import ru.eludia.base.db.dialect.Oracle;
+import ru.eludia.base.model.def.Def;
 
 public abstract class Table extends AbstractTable<Col, Key> {
     
@@ -177,7 +177,7 @@ public abstract class Table extends AbstractTable<Col, Key> {
         return m;
         
     }
-    
+/*    
     public Map<String, Object> randomHASH (Map<String, Object> values) {
 
         Map<String, Object> result = DB.HASH ();
@@ -192,5 +192,101 @@ public abstract class Table extends AbstractTable<Col, Key> {
         return result;
 
     }    
+*/    
+    /**
+     * Герератор записей со случайными значениями,
+     * определяемыми свойствами столбцов охватывающей таблицы.
+     */    
+    public class Sampler {
+        
+        Map<String, Object> values;
+        List<Col> randomCols = new ArrayList<> ();
+        List<Col> triggeredCols = new ArrayList<> ();
+
+        /**
+         * Конструктор
+         * @param maps наборы значений, которые будут копироваться
+         * в каждую сгенерированную запись. В том числе под именами, 
+         * которы нет среди столбцов таблицы.
+         */
+        public Sampler (Map<String, Object>... maps) {
+            
+            this.values = DB.HASH ();
+            
+            for (Map<String, Object> map: maps) values.putAll (map);
+            
+            for (Col c: columns.values ()) {
+                
+                final String k = c.getName ();
+                
+                if (values.containsKey (k)) {
+                    
+                    if (values.get (k) instanceof Def) {
+                        randomCols.add (c);
+                        values.remove (k);
+                    }
+                    
+                    continue;
+                    
+                }
+                
+                randomCols.add (c);
+                
+                if (c.isNullable () || c.getType () == Type.BOOLEAN) triggeredCols.add (c);
+                
+            }
+
+        }
+                
+        /**
+         * Новая запись со случайными значениями.
+         * Поля, входящие в исходные values, копируются.
+         * BOOLEAN-поля заполяются нулями.
+         * Для остальных полей таблицы генерируются непустые значения.
+         */
+        public Map<String, Object> nextHASH () {
+            Map<String, Object> result = DB.HASH ();
+            for (Col c: randomCols) result.put (c.getName (), c.getType () == Type.BOOLEAN ? 0 : c.getValueGenerator ().get ());
+            result.putAll (values);
+            return result;
+        }
+
+        /**
+         * Число всевозможных наборов полей, допускающих пустые значения.
+         * Равно 2^(число полей, допускающих пустые значения)
+         */
+        public int getCount () {
+            return 1 << triggeredCols.size ();
+        }
+         
+        /**
+         * Урезание данных (переопределение null'ами) по заданной маске
+         * @param src исходная запись (полученная как nextHASH)
+         * @param mask битовая маска для вырезания: число от 0 до getCount ()
+         * @return копия исходной записи, где для некоторых полей 
+         * (соответствующих 1 в mask) значения заменены на null.
+         */
+        public Map<String, Object> cutOut (Map<String, Object> src, int mask) {
+            
+            Map<String, Object> result = DB.HASH ();            
+            result.putAll (src);
+            int m = 1;
+            
+            for (int i = 0; i < triggeredCols.size (); i ++) {
+                
+                if ((mask & m) != 0) {
+                    final Col col = triggeredCols.get (i);
+                    result.put (col.getName (), col.type == Type.BOOLEAN ? 1 : null);
+                }
+                
+                m <<= 1;
+                
+            }
+            
+            return result;
+            
+        }        
+
+    }
 
 }
