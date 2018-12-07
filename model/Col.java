@@ -144,16 +144,15 @@ public class Col extends AbstractCol implements Cloneable {
             };
             
             case INTEGER: return () -> {
-                return random.nextInt (); 
+                return BigInteger.valueOf (random.nextLong ()).mod (BigInteger.TEN.pow (physicalCol.getLength ()));
             };
             
             case MONEY:
             case NUMERIC: return () -> {
                 final BigInteger bi = BigInteger.valueOf (random.nextLong ());
                 final BigDecimal raw = new BigDecimal (bi, precision);
-                int n = raw.precision () - raw.scale () - length;
-                if (n <= 0) return raw;
-                BigDecimal [] divideAndRemainder = raw.divideAndRemainder (BigDecimal.TEN.pow (n));
+                if (raw.precision () - raw.scale () <= length - precision) return raw;
+                BigDecimal [] divideAndRemainder = raw.divideAndRemainder (BigDecimal.TEN.pow (length - precision));
                 return divideAndRemainder [1];
             };
             
@@ -172,16 +171,18 @@ public class Col extends AbstractCol implements Cloneable {
                 return new java.sql.Timestamp (System.currentTimeMillis () + random.nextInt ());
             };
             
-            case STRING:
-            case TEXT: return () -> {
-                int len = physicalCol.getLength ();
-                if (len == 0) len = random.nextInt (4000);
-                StringBuilder sb = new StringBuilder ();
-                for (int i = 0; i < len; i ++) sb.append (random.nextInt (5) == 0 ? ' ' : (char) ('A' + random.nextInt (60)));
-                return sb.toString ();
+            case STRING: return () -> {
+                return new String (new char [physicalCol.getLength ()]).replace ('\0', (char) ('A' + random.nextInt (60)));
             };
             
-            case BINARY:
+            case TEXT: return () -> {
+                return new String (new char [8001]).replace ('\0', 's');
+            };
+            
+            case BINARY: return () -> {
+                return new byte [physicalCol.getLength ()];
+            };
+            
             case BLOB: return () -> {
                 return "CAFEBABE";
             };

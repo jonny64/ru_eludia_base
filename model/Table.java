@@ -182,17 +182,12 @@ public abstract class Table extends AbstractTable<Col, Key> {
 
         Map<String, Object> result = DB.HASH ();
 
-        for (Col c: this.columns.values ()) {
-            
-            final String k = c.getName ();
-            
-            result.put (k,
-                values.containsKey (k) ? 
-                    values.get (k) : 
-                    c.getValueGenerator ().get ()
-            );
-
+        for (Col c: this.columns.values ()) {            
+            final String k = c.getName ();            
+            if (!values.containsKey (k)) result.put (k, c.getValueGenerator ().get ());            
         }
+        
+        result.putAll (values);
 
         return result;
 
