@@ -257,6 +257,7 @@ public final class Oracle extends ANSI {
         if (asIs == toBe) return null;
             
         if (asIs == JDBCType.TIMESTAMP && toBe == JDBCType.DATE) return null;
+        if (asIs == JDBCType.CLOB      && toBe == JDBCType.VARCHAR) return null;
 
         return TypeAction.RECREATE;
             

@@ -21,7 +21,8 @@ public final class Diff {
             (asIs.getPrecision () < toBe.getPrecision ()) ;        
     }
 
-    private static boolean isShorter (PhysicalCol asIs, PhysicalCol toBe) {        
+    private static boolean isShorter (PhysicalCol asIs, PhysicalCol toBe) {
+        if (asIs.getType () == JDBCType.CLOB && toBe.getType () == JDBCType.VARCHAR) return false;
         if (asIs.getType () == JDBCType.NUMERIC && toBe.getType () == JDBCType.NUMERIC) return isNumShorter (asIs, toBe);
         return asIs.getLength () < toBe.getLength ();        
     }
