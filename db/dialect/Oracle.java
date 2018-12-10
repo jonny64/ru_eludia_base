@@ -480,6 +480,20 @@ public final class Oracle extends ANSI {
             col.setRemark (rs.getString ("COMMENTS"));
             
         });
+        
+        forEach (new QP ("SELECT trigger_type, triggering_event, table_name, trigger_body FROM user_triggers"), rs -> {
+            
+            PhysicalTable t = m.get (rs.getString ("TABLE_NAME"));
+            
+            if (t == null) return;
+            
+            String type = rs.getString ("TRIGGER_TYPE");
+            
+            if (!type.endsWith (" EACH ROW")) return;
+                        
+            t.getTriggers ().add (new Trigger (type.substring (0, type.length () - "EACH ROW".length ()) + rs.getString ("TRIGGERING_EVENT"), rs.getString ("TRIGGER_BODY")));
+
+        });        
 
         return m;
                       
@@ -674,8 +688,6 @@ public final class Oracle extends ANSI {
 
         d0 ("CREATE OR REPLACE TRIGGER " + name + " " + trg.getWhen () + " ON " + table.getName () + " FOR EACH ROW " + trg.getWhat ());
 
-        d0 ("ALTER TRIGGER " + name + " COMPILE");
-
     }
     
     private static final PhysicalCol dummyIntCol = new PhysicalCol (JDBCType.INTEGER, "");
@@ -777,7 +789,11 @@ public final class Oracle extends ANSI {
         catch (SQLException ex) {
             logger.log (Level.SEVERE, "Cannot PURGE RECYCLEBIN", ex);
         }
-        
+
+        forEach (new QP ("SELECT object_name FROM user_objects WHERE object_type='TRIGGER' AND status='INVALID'"), rs -> {
+            d0 ("ALTER TRIGGER " + rs.getString (1) + " COMPILE");
+        });
+
         forFirst (new QP ("SELECT NAME, TEXT, TYPE FROM USER_ERRORS"), rs -> {
             throw new IllegalStateException (rs.getString ("TYPE") + " " + rs.getString ("NAME") + ": " + rs.getString ("TEXT"));
         });

@@ -826,7 +826,35 @@ public abstract class ANSI extends DB {
         
         for (Ref ref: newRefs) create (ref);
         
-        for (Table t: tables) for (Trigger trg: t.getTriggers ().values ()) update (t, trg);
+        for (Table toBe: tables) {
+            
+            if (toBe.getTriggers ().isEmpty ()) continue;
+
+            PhysicalTable asIs = ex.get (toBe.getName ());            
+            
+            for (Trigger trg: toBe.getTriggers ().values ()) {
+                
+                if (asIs != null) {
+
+                    Trigger trgAsIs = asIs.getTriggers ().get (trg.getName ());
+                    
+                    if (trgAsIs == null) {
+                        logger.finest (toBe.getName () + '.' + trg.getName () + " not found");
+                    }
+                    else if (!trgAsIs.getWhat ().equals (trg.getWhat ())) {
+                        logger.finest (toBe.getName () + '.' + trg.getName () + ": '" + trgAsIs.getWhat () + "' -> '" + trg.getWhat () + "'");
+                    }
+                    else {
+                        continue;
+                    }
+                    
+                }
+                
+                update (toBe, trg);
+                
+            }
+        
+        }
 
         checkModel ();
 
