@@ -822,7 +822,7 @@ public abstract class ANSI extends DB {
         
         for (Table t: tables) updateData (t);        
         
-        updateViews (views);        
+        updateViews (ex, views);        
         
         for (Ref ref: newRefs) create (ref);
         
@@ -831,8 +831,16 @@ public abstract class ANSI extends DB {
         checkModel ();
 
     }
+    
+    private String getExistingColRemark (PhysicalModel ex, String tableName, String colName) {
+        PhysicalTable t = ex.get (tableName);
+        if (t == null) return null;
+        PhysicalCol col = t.getColumn (colName);
+        if (col == null) return null;
+        return col.getRemark ();
+    }
 
-    private void updateViews (List<View> views) throws SQLException {
+    private void updateViews (PhysicalModel ex, List<View> views) throws SQLException {
         
         int tries = views.size ();
         
@@ -851,9 +859,21 @@ public abstract class ANSI extends DB {
                 if (passed.contains (v)) continue;
                 
                 try {
+                    
                     update (v);
-                    for (Col col: v.getColumns ().values ()) comment (v, col);
+                    
+                    for (Col col: v.getColumns ().values ()) {
+                        
+                        final String existingColRemark = getExistingColRemark (ex, v.getName (), col.getName ());
+                        
+                        if (DB.eq (col.getRemark (), existingColRemark)) continue;
+
+                        comment (v, col);
+                        
+                    }
+                    
                     passed.add (v);
+                    
                 }
                 catch (SQLException e) {
                     logger.warning ("Exception occured, will retry with " + v.getName () + ". The message was " + e.getMessage ());

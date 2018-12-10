@@ -429,8 +429,9 @@ public final class Oracle extends ANSI {
         PhysicalModel m = new PhysicalModel ();
         
         forEach (new QP ("SELECT table_name FROM user_tables"), rs -> {m.add (new PhysicalTable (rs));});
+        forEach (new QP ("SELECT view_name table_name FROM user_views"), rs -> {m.add (new PhysicalTable (rs));});
 
-        forEach (new QP ("SELECT * FROM user_tab_comments WHERE table_type = 'TABLE'"), rs -> {
+        forEach (new QP ("SELECT * FROM user_tab_comments WHERE table_type IN ('TABLE', 'VIEW')"), rs -> {
             
             PhysicalTable t = m.get (rs.getString ("TABLE_NAME"));
             
