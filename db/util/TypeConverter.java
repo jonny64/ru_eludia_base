@@ -7,14 +7,21 @@ import java.io.InputStream;
 import java.io.StringReader;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.GregorianCalendar;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import javax.json.Json;
+import javax.json.JsonArray;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonNumber;
 import javax.json.JsonObject;
@@ -429,5 +436,102 @@ public class TypeConverter {
                 
     }
     
+    private static JsonValue jsonNumber (Object o) {
+        return Json.createArrayBuilder ().add (new BigDecimal (o.toString ())).build ().get (0);
+    }
+    
+    private static JsonValue jsonString (String s) {
+        return Json.createArrayBuilder ().add (s).build ().get (0);
+    }
+
+    public static JsonValue json (Object o) {
+        
+        if (o == null) return JsonValue.NULL;
+        
+        if (o instanceof Boolean) return Boolean.TRUE.equals (o) ? JsonValue.TRUE : JsonValue.FALSE;
+        
+        if (o instanceof Number) return jsonNumber (o);
+        if (o instanceof BigDecimal) return jsonNumber (o);
+        if (o instanceof BigInteger) return jsonNumber (o);
+                
+        if (o instanceof Collection) {
+            JsonArrayBuilder ab = Json.createArrayBuilder ();
+            for (Object i: (Collection) o) ab.add (json (i));
+            return ab.build ();
+        }
+        
+        if (o instanceof Map) {
+            JsonObjectBuilder ob = Json.createObjectBuilder ();
+            Map m = (Map) o;
+            for (Object k: m.keySet ()) ob.add (k.toString (), json (m.get (k)));
+            return ob.build ();
+        }
+        
+        return jsonString (o.toString ());
+        
+    }
+    
+    public static Object pojo (JsonValue jv) {
+        
+        if (jv == null) return null;
+        if (JsonValue.NULL.equals (jv)) return null;
+        
+        if (JsonValue.TRUE.equals (jv)) return 1;
+        if (JsonValue.FALSE.equals (jv)) return 0;
+        
+        if (jv instanceof JsonNumber) {
+            
+            JsonNumber jn = (JsonNumber) jv;
+            
+            try {
+                return jn.longValueExact ();
+            }
+            catch (ArithmeticException ex) {
+                return jn.bigDecimalValue ();
+            }
+            
+        }
+        
+        if (jv instanceof JsonArray) {
+            
+            JsonArray ja = (JsonArray) jv;
+            
+            switch (ja.size ()) {
+                case 0:
+                    return Collections.EMPTY_LIST;
+                case 1:
+                    return Collections.singletonList (pojo (ja.get (0)));
+                default:
+                    return ja.stream ().map (TypeConverter::pojo).collect (Collectors.toList ());
+            }
+                        
+        }
+        
+        if (jv instanceof JsonObject) {
+            
+            JsonObject jo = (JsonObject) jv;
+            final int size = jo.size ();
+            
+            switch (size) {
+                case 0:
+                    return Collections.EMPTY_MAP;
+                case 1:
+                    Map.Entry<java.lang.String, JsonValue> entry = jo.entrySet ().stream ().findFirst ().get ();
+                    return Collections.singletonMap (entry.getKey (), pojo (entry.getValue ()));
+                default:
+                    Map<String, Object> m = new HashMap<> (size);
+                    for (String k: jo.keySet ()) m.put (k, pojo (jo.get (k)));
+                    return m;
+            }               
+            
+        }
+                
+        throw new IllegalArgumentException ("Cannot translate to POJO: " + jv);
+        
+    }
+
+    public static Map<String, Object> HASH (JsonObject jo) {
+        return (Map<String, Object>) pojo (jo);
+    }    
     
 }
