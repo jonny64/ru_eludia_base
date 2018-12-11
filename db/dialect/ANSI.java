@@ -883,7 +883,12 @@ public abstract class ANSI extends DB {
                 
                 update (viewToBe);
                 
-                for (Col col: viewToBe.getColumns ().values ()) comment (viewToBe, col);
+                try {
+                    for (Col col: viewToBe.getColumns ().values ()) comment (viewToBe, col);
+                }
+                catch (SQLException e) {
+                    // do nothing, fix in checkModel ()
+                }
                 
             }
 

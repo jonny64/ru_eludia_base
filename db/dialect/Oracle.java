@@ -13,12 +13,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import ru.eludia.base.DB;
 import ru.eludia.base.db.sql.build.QP;
 import ru.eludia.base.db.sql.build.TableSQLBuilder;
 import ru.eludia.base.model.abs.AbstractCol;
@@ -810,21 +813,42 @@ public final class Oracle extends ANSI {
         }
         
         int oldNBrokenViews = Integer.MAX_VALUE;
+        Set<String> fixedViewNames = new HashSet<> ();
         
         while (true) {
-            
+
             List<String> brokenViewNames = getInvalidObjectNames ("VIEW");
-            
+
             if (brokenViewNames.isEmpty ()) break;
-            
+
             if (brokenViewNames.size () == oldNBrokenViews) throw new IllegalStateException ("Cannot compile views: " + brokenViewNames);
-            
+
             for (String name: brokenViewNames) compile ("VIEW", name);
-            
+
+            fixedViewNames.addAll (brokenViewNames);
+
             oldNBrokenViews = brokenViewNames.size ();
-                        
+
         }
         
+        if (!fixedViewNames.isEmpty ()) {
+            
+            PhysicalModel ex = getExistingModel ();
+            
+            for (String name: fixedViewNames) {
+                
+                View viewToBe = (View) getModel ().get (name);
+                
+                for (Col col: viewToBe.getColumns ().values ())
+                    
+                    if (!DB.eq (col.getRemark (), ex.getRemark (col)))
+                        
+                        comment (viewToBe, col);
+                
+            }
+            
+        }
+
         for (String name: getInvalidObjectNames ("TRIGGER")) compile ("TRIGGER", name);
 
         forFirst (new QP ("SELECT NAME, TEXT, TYPE FROM USER_ERRORS"), rs -> {
