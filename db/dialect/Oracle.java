@@ -9,6 +9,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -17,6 +18,7 @@ import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import ru.eludia.base.db.sql.build.QP;
 import ru.eludia.base.db.sql.build.TableSQLBuilder;
 import ru.eludia.base.model.abs.AbstractCol;
@@ -39,6 +41,7 @@ import ru.eludia.base.model.diff.TypeAction;
 import ru.eludia.base.model.phys.PhysicalModel;
 import ru.eludia.base.db.sql.build.SQLBuilder;
 import static ru.eludia.base.model.def.Blob.EMPTY_BLOB;
+import ru.eludia.base.model.phys.PhysicalView;
 
 public final class Oracle extends ANSI {
     
@@ -429,7 +432,7 @@ public final class Oracle extends ANSI {
         PhysicalModel m = new PhysicalModel ();
         
         forEach (new QP ("SELECT table_name FROM user_tables"), rs -> {m.add (new PhysicalTable (rs));});
-        forEach (new QP ("SELECT view_name table_name FROM user_views"), rs -> {m.add (new PhysicalTable (rs));});
+        forEach (new QP ("SELECT view_name table_name, text FROM user_views"), rs -> {m.add (new PhysicalView (rs));});
 
         forEach (new QP ("SELECT * FROM user_tab_comments WHERE table_type IN ('TABLE', 'VIEW')"), rs -> {
             
@@ -662,7 +665,7 @@ public final class Oracle extends ANSI {
 
     @Override
     protected void update (View view)  throws SQLException {
-        d0 ("CREATE OR REPLACE VIEW " + view.getName () + " AS " + view.getSQL ());
+        d0 ("CREATE OR REPLACE FORCE VIEW " + view.getName () + " AS " + view.getSQL ());
     }
 
     @Override
@@ -780,6 +783,22 @@ public final class Oracle extends ANSI {
         return qp;
     }
     
+    private List<String> getInvalidObjectNames (String type) throws SQLException {
+        
+        List<String> result = new ArrayList<> ();
+        
+        forEach (new QP ("SELECT object_name FROM user_objects WHERE object_type=? AND status=?", type, "INVALID"), (rs) -> {
+            result.add (rs.getString (1));
+        });
+        
+        return result;
+        
+    }
+    
+    private void compile (String type, String name) throws SQLException {
+        d0 ("ALTER " + type + ' ' + name + " COMPILE");
+    }
+    
     @Override
     protected void checkModel () throws SQLException {
 
@@ -789,10 +808,24 @@ public final class Oracle extends ANSI {
         catch (SQLException ex) {
             logger.log (Level.SEVERE, "Cannot PURGE RECYCLEBIN", ex);
         }
-
-        forEach (new QP ("SELECT object_name FROM user_objects WHERE object_type='TRIGGER' AND status='INVALID'"), rs -> {
-            d0 ("ALTER TRIGGER " + rs.getString (1) + " COMPILE");
-        });
+        
+        int oldNBrokenViews = Integer.MAX_VALUE;
+        
+        while (true) {
+            
+            List<String> brokenViewNames = getInvalidObjectNames ("VIEW");
+            
+            if (brokenViewNames.isEmpty ()) break;
+            
+            if (brokenViewNames.size () == oldNBrokenViews) throw new IllegalStateException ("Cannot compile views: " + brokenViewNames);
+            
+            for (String name: brokenViewNames) compile ("VIEW", name);
+            
+            oldNBrokenViews = brokenViewNames.size ();
+                        
+        }
+        
+        for (String name: getInvalidObjectNames ("TRIGGER")) compile ("TRIGGER", name);
 
         forFirst (new QP ("SELECT NAME, TEXT, TYPE FROM USER_ERRORS"), rs -> {
             throw new IllegalStateException (rs.getString ("TYPE") + " " + rs.getString ("NAME") + ": " + rs.getString ("TEXT"));

@@ -45,6 +45,7 @@ import ru.eludia.base.db.sql.gen.Part;
 import ru.eludia.base.db.sql.gen.Predicate;
 import ru.eludia.base.db.sql.gen.ResultCol;
 import ru.eludia.base.db.sql.gen.Select;
+import ru.eludia.base.model.phys.PhysicalView;
 
 public abstract class ANSI extends DB {
     
@@ -806,8 +807,13 @@ public abstract class ANSI extends DB {
                 PhysicalKey keyAsIs = asIs == null ? null : (PhysicalKey) asIs.getKeys ().get (keyToBe.getName ());
                 
                 if (keyAsIs == null) {
-
-                    create (toBe, keyToBe);
+                    
+                    try {
+                        create (toBe, keyToBe);
+                    }
+                    catch (Exception e) {
+                        recreate (toBe, keyToBe);
+                    }
 
                 }
                 else if (!keyAsIs.equals (keyToBe)) {
@@ -858,64 +864,31 @@ public abstract class ANSI extends DB {
 
         checkModel ();
 
-    }
-    
-    private String getExistingColRemark (PhysicalModel ex, String tableName, String colName) {
-        PhysicalTable t = ex.get (tableName);
-        if (t == null) return null;
-        PhysicalCol col = t.getColumn (colName);
-        if (col == null) return null;
-        return col.getRemark ();
-    }
+    }   
 
     private void updateViews (PhysicalModel ex, List<View> views) throws SQLException {
-        
-        int tries = views.size ();
-        
-        if (tries == 0) return;
-        
-        SQLException lastException = null;
-        
-        Set<View> passed = new HashSet (tries);
-        
-        for (int i = 0; i < tries; i ++) {
-            
-            lastException = null;
+                        
+        for (View viewToBe: views) {
 
-            for (View v: views) {
-                
-                if (passed.contains (v)) continue;
-                
-                try {
-                    
-                    update (v);
-                    
-                    for (Col col: v.getColumns ().values ()) {
-                        
-                        final String existingColRemark = getExistingColRemark (ex, v.getName (), col.getName ());
-                        
-                        if (DB.eq (col.getRemark (), existingColRemark)) continue;
+            if (DB.eq (viewToBe.getSQL (), ex.getSql (viewToBe))) {
 
-                        comment (v, col);
+                for (Col col: viewToBe.getColumns ().values ()) 
+                    
+                    if (!DB.eq (col.getRemark (), ex.getRemark (col))) 
                         
-                    }
-                    
-                    passed.add (v);
-                    
-                }
-                catch (SQLException e) {
-                    logger.warning ("Exception occured, will retry with " + v.getName () + ". The message was " + e.getMessage ());
-                    lastException = e;                    
-                }
+                        comment (viewToBe, col);
+
+            }
+            else {
+                
+                update (viewToBe);
+                
+                for (Col col: viewToBe.getColumns ().values ()) comment (viewToBe, col);
                 
             }
 
-            if (lastException == null) return;
-
         }
-        
-        throw lastException;
-        
+
     }
 
     public void updateSchema () throws SQLException {

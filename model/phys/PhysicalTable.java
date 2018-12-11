@@ -5,7 +5,7 @@ import java.sql.SQLException;
 import java.util.logging.Logger;
 import ru.eludia.base.model.abs.AbstractTable;
 
-public final class PhysicalTable extends AbstractTable<PhysicalCol, PhysicalKey> {
+public class PhysicalTable extends AbstractTable<PhysicalCol, PhysicalKey> {
         
     final Logger logger = Logger.getLogger (this.getClass ().getName ());
 
