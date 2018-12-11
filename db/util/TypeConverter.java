@@ -53,6 +53,18 @@ public class TypeConverter {
 
     }
     
+    private static final Map primitiveWrapperMap = new HashMap();
+    static {
+         primitiveWrapperMap.put(Boolean.TYPE, Boolean.class);
+         primitiveWrapperMap.put(Byte.TYPE, Byte.class);
+         primitiveWrapperMap.put(Character.TYPE, Character.class);
+         primitiveWrapperMap.put(Short.TYPE, Short.class);
+         primitiveWrapperMap.put(Integer.TYPE, Integer.class);
+         primitiveWrapperMap.put(Long.TYPE, Long.class);
+         primitiveWrapperMap.put(Double.TYPE, Double.class);
+         primitiveWrapperMap.put(Float.TYPE, Float.class);
+    }
+    
     /**
      * Не-null строка из произвольного объекта
      * @param o что угодно
@@ -365,11 +377,11 @@ public class TypeConverter {
      * 
      * @return javaBean с требуемыми значениями полей
      */
-    public static final Object javaBean (Class clazz, Map<String, Object> values) {
+    public static final <T> T javaBean (Class<T> clazz, Map<String, Object> values) {
                 
         try {
             
-            Object javaBean = clazz.getConstructor ().newInstance ();
+            T javaBean = clazz.getConstructor ().newInstance ();
             
             BeanInfo info = Introspector.getBeanInfo (clazz);
             
@@ -385,26 +397,29 @@ public class TypeConverter {
                 
                 final Method writeMethod = pd.getWriteMethod ();
 
-                if (writeMethod == null) continue;
+                if (writeMethod == null) {
+                    final Method readMethod = pd.getReadMethod();
+                    if (!List.class.equals(readMethod.getReturnType())) continue;
+                    
+                    List list = (List)readMethod.invoke(javaBean);
+                    list.addAll((List)value);
+                    
+                    continue;
+                }
 
                 Class<?> type = writeMethod.getParameterTypes () [0];
+                
+                if (type.isPrimitive())
+                    type = (Class)primitiveWrapperMap.get(type);
                 
                 if (String.class.equals (type)) {
                     final String s = value.toString ();
                     if (s.isEmpty ()) continue;
                     writeMethod.invoke (javaBean, s);
-                }
-                else if (BigDecimal.class.equals (type)) {
-                    final String s = value.toString ();
-                    if (s.isEmpty ()) continue;
-                    writeMethod.invoke (javaBean, new BigDecimal (s));
-                }
-                else if (Integer.class.equals (type)) {
-                    final String s = value.toString ();
-                    if (s.isEmpty ()) continue;
-                    writeMethod.invoke (javaBean, new Integer (s));
-                }
-                else if (Boolean.class.equals (type) || "boolean".equals (type.getName ())) {
+                } 
+                else if (value.getClass().equals(type))
+                    writeMethod.invoke(javaBean, value);
+                else if (Boolean.class.equals (type)) {
                     final String s = value.toString ();
                     if (s.isEmpty ()) continue;
                     switch (s) {
@@ -420,6 +435,15 @@ public class TypeConverter {
                 }
                 else if (XMLGregorianCalendar.class.equals (type)) {
                     writeMethod.invoke (javaBean, XMLGregorianCalendar (value.toString ().replace (' ', 'T')));
+                }
+                else if (Byte.class.equals(type)
+                        || Short.class.equals(type)
+                        || Integer.class.equals(type)
+                        || Long.class.equals(type)
+                        || Double.class.equals(type)
+                        || Float.class.equals(type)
+                        || BigDecimal.class.equals(type)) {
+                        writeMethod.invoke(javaBean, type.getMethod("valueOf", String.class).invoke(value, value.toString()));
                 }
                 else {
                     logger.warning ("javaBean property setting not supported for " + type.getName ());
