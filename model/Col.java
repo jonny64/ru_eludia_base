@@ -144,13 +144,13 @@ public class Col extends AbstractCol implements Cloneable {
             };
             
             case INTEGER: return () -> {
-                return BigInteger.valueOf (random.nextLong ()).mod (BigInteger.TEN.pow (physicalCol.getLength ()));
+                return BigInteger.valueOf (random.nextLong ()).mod (BigInteger.TEN.pow (physicalCol.getLength ())).abs ();
             };
             
             case MONEY:
             case NUMERIC: return () -> {
                 final BigInteger bi = BigInteger.valueOf (random.nextLong ());
-                final BigDecimal raw = new BigDecimal (bi, precision);
+                final BigDecimal raw = new BigDecimal (bi, precision).abs ();
                 if (raw.precision () - raw.scale () <= length - precision) return raw;
                 BigDecimal [] divideAndRemainder = raw.divideAndRemainder (BigDecimal.TEN.pow (length - precision));
                 return divideAndRemainder [1];
