@@ -171,9 +171,9 @@ public abstract class Table extends AbstractTable<Col, Key> {
             m.put (colName, DB.to.object (data.get (colName)));
             
         }
-        
-        for (int i = 0; i < len; i += 2) m.put (o [i].toString (), o [i + 1]);
-        
+
+        for (int i = 0; i < len; i += 2) m.put (DB.lc (o [i]), o [i + 1]);
+
         return m;
         
     }

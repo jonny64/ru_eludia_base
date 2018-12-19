@@ -44,6 +44,7 @@ import ru.eludia.base.db.util.ParamSetter;
 import ru.eludia.base.db.util.TypeConverter;
 import javax.xml.datatype.XMLGregorianCalendar;
 import ru.eludia.base.model.Col;
+import ru.eludia.base.model.ColEnum;
 import ru.eludia.base.model.diff.TypeAction;
 
 /**
@@ -196,10 +197,16 @@ public abstract class DB implements AutoCloseable, ParamSetter {
         
         Map <String, Object> m = new HashMap (len >> 1);
         
-        for (int i = 0; i < len; i += 2) m.put (o [i].toString ().toLowerCase (), o [i + 1]);
+        for (int i = 0; i < len; i += 2) m.put (lc (o [i]), o [i + 1]);
         
         return m;
         
+    }
+    
+    public static String lc (Object o) {
+        if (o == null) return null;
+        if (o instanceof ColEnum) return ((ColEnum) o).lc ();
+        return o.toString ().toLowerCase ();
     }
 
     public static void set (Map<String, Object> h, Object k, Object v) {
