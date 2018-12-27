@@ -3,6 +3,7 @@ package ru.eludia.base.db.sql.gen;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import ru.eludia.base.model.ColEnum;
 import ru.eludia.base.model.Table;
 
 /**
@@ -53,6 +54,10 @@ public class Select extends Part<Select> {
      */
     public List<Join> getJoins () {
         return joins;
+    }
+
+    public final Select orderBy (ColEnum col) {
+        return orderBy (col.lc ());
     }
 
     /**

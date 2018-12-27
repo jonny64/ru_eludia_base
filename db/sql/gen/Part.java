@@ -74,6 +74,11 @@ public abstract class Part<T extends Part> {
         return (T) this;        
     }
 
+    public final T and (ColEnum col, Object... values) {
+        andEither (col.lc (), values);
+        return (T) this;
+    }
+    
     public final T and (String src, Object... values) {
         andEither (src, values);
         return (T) this;
@@ -86,7 +91,7 @@ public abstract class Part<T extends Part> {
 
     public Filter andEither (ColEnum col, Operator op, Object... values) {
         if (filters.isEmpty ()) filters = new ArrayList<> ();
-        final Filter filter = new Filter (this, col.getCol ().getName ().toLowerCase (), new Predicate (op, values));
+        final Filter filter = new Filter (this, col.lc (), new Predicate (op, values));
         if (!filter.isOff ()) filters.add (filter);
         return filter;
     }
@@ -107,6 +112,10 @@ public abstract class Part<T extends Part> {
     
     public final T where (String src, Object... values) {
         return and (src, values);
+    }
+
+    public final T where (ColEnum col, Object... values) {
+        return and (col.lc (), values);
     }
 
     public Table getTable () {
