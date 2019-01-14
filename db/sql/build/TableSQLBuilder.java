@@ -63,6 +63,7 @@ public abstract class TableSQLBuilder extends SQLBuilder {
             if (column == null) continue;
             if (isInKey (column)) continue;
             final PhysicalCol phy = column.toPhysical ();
+            if (phy.isVirtual ()) continue;
             if (!cols.contains (phy)) cols.add (phy);
         }
         
