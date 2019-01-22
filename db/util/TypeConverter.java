@@ -304,6 +304,7 @@ public class TypeConverter {
     public static final Timestamp timestamp (Object v) {
         
         if (v instanceof XMLGregorianCalendar) return new Timestamp (((XMLGregorianCalendar) v).toGregorianCalendar ().getTimeInMillis ());
+        if (v instanceof java.util.Date) return new Timestamp (((java.util.Date) v).getTime ());
         
         String s = v.toString ().replace ("+03:00", "");
 
