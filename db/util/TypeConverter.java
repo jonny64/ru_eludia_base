@@ -437,6 +437,9 @@ public class TypeConverter {
                 else if (XMLGregorianCalendar.class.equals (type)) {
                     writeMethod.invoke (javaBean, XMLGregorianCalendar (value.toString ().replace (' ', 'T')));
                 }
+                else if (BigInteger.class.equals(type)) {
+                        writeMethod.invoke (javaBean, new BigInteger (value.toString ()));
+                }
                 else if (Byte.class.equals(type)
                         || Short.class.equals(type)
                         || Integer.class.equals(type)
