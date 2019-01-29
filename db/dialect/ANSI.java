@@ -83,7 +83,13 @@ public abstract class ANSI extends DB {
         switch (type) {
             
             case NUMERIC:
-                setNumericParam (st, n, value);
+                try {
+                    setNumericParam (st, n, value);
+                }
+                catch (NumberFormatException ex) {
+                    logger.severe ("Problem value: '" + value + "', " + value.getClass ().getName ());
+                    throw ex;
+                }
                 break;
 
             case DATE:
