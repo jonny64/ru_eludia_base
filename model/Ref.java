@@ -25,11 +25,13 @@ public class Ref extends Col {
         
         targetTable = table.getModel ().get (c);
 
-        if (targetTable == null) throw new IllegalArgumentException ("Table not found for class " + c.getName ());
+        if (targetTable == null) throw new IllegalArgumentException ("Cannot adjust " + getTable ().getName () + "." + getName () + ": table not found for class " + c.getName ());
         
         List<Col> targetPk = targetTable.getPk ();
         
-        if (targetPk.size () != 1) throw new IllegalArgumentException ("References to tables with vector PKs are not yet supported");
+        if (targetPk == null) throw new IllegalArgumentException ("Cannot adjust " + getTable ().getName () + "." + getName () + ": targetPk == null");
+        
+        if (targetPk.size () != 1) throw new IllegalArgumentException ("Cannot adjust " + getTable ().getName () + "." + getName () + ": references to tables with vector PKs are not yet supported");
         
         targetCol = targetPk.get (0);
         
