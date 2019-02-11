@@ -9,14 +9,19 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
+import ru.eludia.base.DB;
 import ru.eludia.base.db.sql.build.QP;
 import ru.eludia.base.db.sql.build.TableSQLBuilder;
 import ru.eludia.base.model.abs.AbstractCol;
@@ -39,6 +44,7 @@ import ru.eludia.base.model.diff.TypeAction;
 import ru.eludia.base.model.phys.PhysicalModel;
 import ru.eludia.base.db.sql.build.SQLBuilder;
 import static ru.eludia.base.model.def.Blob.EMPTY_BLOB;
+import ru.eludia.base.model.phys.PhysicalView;
 
 public final class Oracle extends ANSI {
     
@@ -149,29 +155,26 @@ public final class Oracle extends ANSI {
     }
     
     protected String getTypeName (PhysicalCol col) {
+        
+        if (col == null) throw new IllegalStateException ("PhysicalCol col==null: probably, adjustTable is not called");
 
-        try {
-            switch (col.getType ()) {
-                case BLOB:
-                    return "BLOB";
-                case CLOB:
-                    return "CLOB";
-                case DATE:
-                    return "DATE";
-                case NUMERIC:
-                    return "NUMBER";
-                case VARCHAR:
-                    return "VARCHAR2";
-                case TIMESTAMP:
-                    return "TIMESTAMP";
-                case VARBINARY:
-                    return "RAW";
-                default:
-                    throw new IllegalArgumentException ("Not supported: " + col);
-            }
-        } catch (Exception ex) {
-            logger.log (Level.WARNING, "COL: " + col.toString ());
-            throw new IllegalStateException ("getTypeNameException: " + ex.getLocalizedMessage ());
+        switch (col.getType ()) {
+            case BLOB:
+                return "BLOB";
+            case CLOB:
+                return "CLOB";
+            case DATE:
+                return "DATE";
+            case NUMERIC:
+                return "NUMBER";
+            case VARCHAR:
+                return "VARCHAR2";
+            case TIMESTAMP:
+                return "TIMESTAMP";
+            case VARBINARY:
+                return "RAW";
+            default:
+                throw new IllegalArgumentException ("Not supported: " + col);
         }
 
     }
@@ -185,9 +188,9 @@ public final class Oracle extends ANSI {
 
     @Override
     protected final void comment (Table table, AbstractCol col) throws SQLException {
-        
-        d0 ("COMMENT ON COLUMN " + table.getName () + '.' + col.getName () + " IS '" + col.getRemark () + "'");
-        
+
+        d0 ("COMMENT ON COLUMN " + table.getName () + '.' + col.getName () + " IS '" + col.getRemark ().replaceAll ("'", "''") + "'");
+
     }
 
     @Override
@@ -260,6 +263,7 @@ public final class Oracle extends ANSI {
         if (asIs == toBe) return null;
             
         if (asIs == JDBCType.TIMESTAMP && toBe == JDBCType.DATE) return null;
+        if (asIs == JDBCType.CLOB      && toBe == JDBCType.VARCHAR) return null;
 
         return TypeAction.RECREATE;
             
@@ -363,7 +367,7 @@ public final class Oracle extends ANSI {
     
     private String stripQuotes (String s) {
 
-        if (s.indexOf ('"') < 0) return s;
+        if (s.indexOf ('"') < 0 && s.indexOf (' ') < 0) return s;
 
         StringBuilder sb = new StringBuilder ();
 
@@ -431,8 +435,9 @@ public final class Oracle extends ANSI {
         PhysicalModel m = new PhysicalModel ();
         
         forEach (new QP ("SELECT table_name FROM user_tables"), rs -> {m.add (new PhysicalTable (rs));});
+        forEach (new QP ("SELECT view_name table_name, text FROM user_views"), rs -> {m.add (new PhysicalView (rs));});
 
-        forEach (new QP ("SELECT * FROM user_tab_comments WHERE table_type = 'TABLE'"), rs -> {
+        forEach (new QP ("SELECT * FROM user_tab_comments WHERE table_type IN ('TABLE', 'VIEW')"), rs -> {
             
             PhysicalTable t = m.get (rs.getString ("TABLE_NAME"));
             
@@ -481,6 +486,20 @@ public final class Oracle extends ANSI {
             col.setRemark (rs.getString ("COMMENTS"));
             
         });
+        
+        forEach (new QP ("SELECT trigger_type, triggering_event, table_name, trigger_body FROM user_triggers"), rs -> {
+            
+            PhysicalTable t = m.get (rs.getString ("TABLE_NAME"));
+            
+            if (t == null) return;
+            
+            String type = rs.getString ("TRIGGER_TYPE");
+            
+            if (!type.endsWith (" EACH ROW")) return;
+                        
+            t.getTriggers ().add (new Trigger (type.substring (0, type.length () - "EACH ROW".length ()) + rs.getString ("TRIGGERING_EVENT"), rs.getString ("TRIGGER_BODY")));
+
+        });        
 
         return m;
                       
@@ -526,7 +545,7 @@ public final class Oracle extends ANSI {
     }
 
     @Override
-    protected void genUpsertSql (TableSQLBuilder b, Roster<PhysicalCol> keyCols) {
+    protected void genUpsertSql (TableSQLBuilder b) {
         b.append ("MERGE INTO ");
 
         b.append (b.getTable ().getName ());        
@@ -539,7 +558,7 @@ public final class Oracle extends ANSI {
         b.setLastChar (' ');
         b.append ("FROM DUAL) \"__new\" ON (");
         
-        for (PhysicalCol col: keyCols.values ()) {            
+        for (PhysicalCol col: b.getKeyCols ()) {            
             if (b.getLastChar () != '(') b.append (" AND");
             b.append ("\"__old\".");
             b.append (col.getName ());
@@ -549,12 +568,12 @@ public final class Oracle extends ANSI {
         
         b.append (") ");
 
-        if (b.getCols ().size () > keyCols.size ()) {
+        if (!b.getNonKeyCols ().isEmpty ()) {
 
             b.append ("WHEN MATCHED THEN UPDATE SET ");
-            for (PhysicalCol col: b.getCols ()) {
+            for (PhysicalCol col: b.getNonKeyCols ()) {
+                if (col.isVirtual ()) continue;
                 String name = col.getName ();
-                if (keyCols.containsKey (name)) continue;
                 b.append (name);
                 b.append ("=\"__new\".");
                 b.append (name);
@@ -566,12 +585,14 @@ public final class Oracle extends ANSI {
         
         b.append ("WHEN NOT MATCHED THEN INSERT (");
         for (PhysicalCol col: b.getCols ()) {
+            if (col.isVirtual ()) continue;
             b.append (col.getName ());
             b.append (',');
         }
         b.setLastChar (')');
         b.append (" VALUES (");
         for (PhysicalCol col: b.getCols ()) {
+            if (col.isVirtual ()) continue;
             b.append ("\"__new\".");
             b.append (col.getName ());
             b.append (',');
@@ -673,8 +694,6 @@ public final class Oracle extends ANSI {
 
         d0 ("CREATE OR REPLACE TRIGGER " + name + " " + trg.getWhen () + " ON " + table.getName () + " FOR EACH ROW " + trg.getWhat ());
 
-        d0 ("ALTER TRIGGER " + name + " COMPILE");
-
     }
     
     private static final PhysicalCol dummyIntCol = new PhysicalCol (JDBCType.INTEGER, "");
@@ -767,12 +786,75 @@ public final class Oracle extends ANSI {
         return qp;
     }
     
+    private List<String> getInvalidObjectNames (String type) throws SQLException {
+        
+        List<String> result = new ArrayList<> ();
+        
+        forEach (new QP ("SELECT object_name FROM user_objects WHERE object_type=? AND status=?", type, "INVALID"), (rs) -> {
+            result.add (rs.getString (1));
+        });
+        
+        return result;
+        
+    }
+    
+    private void compile (String type, String name) throws SQLException {
+        d0 ("ALTER " + type + ' ' + name + " COMPILE");
+    }
+    
     @Override
     protected void checkModel () throws SQLException {
+
+        try {
+            d0 ("PURGE RECYCLEBIN");
+        }
+        catch (SQLException ex) {
+            logger.log (Level.SEVERE, "Cannot PURGE RECYCLEBIN", ex);
+        }
         
+        int oldNBrokenViews = Integer.MAX_VALUE;
+        Set<String> fixedViewNames = new HashSet<> ();
+        
+        while (true) {
+
+            List<String> brokenViewNames = getInvalidObjectNames ("VIEW");
+
+            if (brokenViewNames.isEmpty ()) break;
+
+            if (brokenViewNames.size () == oldNBrokenViews) throw new IllegalStateException ("Cannot compile views: " + brokenViewNames);
+
+            for (String name: brokenViewNames) compile ("VIEW", name);
+
+            fixedViewNames.addAll (brokenViewNames);
+
+            oldNBrokenViews = brokenViewNames.size ();
+
+        }
+        
+        if (!fixedViewNames.isEmpty ()) {
+            
+            PhysicalModel ex = getExistingModel ();
+            
+            for (String name: fixedViewNames) {
+                
+                View viewToBe = (View) getModel ().get (name);
+                
+                for (Col col: viewToBe.getColumns ().values ())
+                    
+                    if (!DB.eq (col.getRemark (), ex.getRemark (col)))
+                        
+                        comment (viewToBe, col);
+                
+            }
+            
+        }
+
+        for (String name: getInvalidObjectNames ("TRIGGER")) compile ("TRIGGER", name);
+
         forFirst (new QP ("SELECT NAME, TEXT, TYPE FROM USER_ERRORS"), rs -> {
-        throw new IllegalStateException("USER_ERROR: " + rs.getString ("TYPE") + " " + rs.getString ("NAME") + " " + rs.getString ("TEXT"));
+            throw new IllegalStateException (rs.getString ("TYPE") + " " + rs.getString ("NAME") + ": " + rs.getString ("TEXT"));
         });
+        
     };
     
     public enum TemporalityType {

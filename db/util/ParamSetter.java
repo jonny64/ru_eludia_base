@@ -6,6 +6,6 @@ import java.sql.SQLException;
 
 public interface ParamSetter {
         
-    void setParam (PreparedStatement st, int n, JDBCType type, Object value) throws SQLException;    
+    void setParam (PreparedStatement st, int n, JDBCType type, int length, Object value) throws SQLException;    
     
 }

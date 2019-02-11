@@ -86,7 +86,7 @@ public class QP extends SQLBuilder {
             
             Object p = params.get (n - 1);
 
-            ps.setParam (st, n, JDBCType.valueOf (md.getParameterType (n)), p);
+            ps.setParam (st, n, JDBCType.valueOf (md.getParameterType (n)), md.getPrecision (n), p);
             
             logParam (p);
 
@@ -102,7 +102,9 @@ public class QP extends SQLBuilder {
             
             Object p = params.get (n - 1);
             
-            ps.setParam (st, n, cols.get (n - 1).getType (), p);
+            final PhysicalCol col = cols.get (n - 1);
+            
+            ps.setParam (st, n, col.getType (), col.getLength (), p);
             
             logParam (p);
 

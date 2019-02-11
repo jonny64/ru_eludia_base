@@ -71,30 +71,20 @@ public class Model extends AbstractModel<Col, Key, Table> {
      * @param dsName JNDI-имя источника данных
      * @param packageNames имена java-пакетов с описаниями таблиц
      */
-    public Model (DataSource ds, String... packageNames) {
+    public Model (DataSource ds, String... packageNames) throws IOException, SQLException {
         
         this.ds = ds;
                 
-        try {
-            
-            for (String i: packageNames) addPackage (i);
+        for (String i: packageNames) addPackage (i);
                         
-            try (DB db = getDb ()) {                
-                db.adjustModel  ();
-                db.updateSchema ();
-            }            
-            
-        }
-        catch (Exception ex) {
-            throw new IllegalStateException (ex);
-        }
+        try (DB db = getDb ()) {                
+            db.adjustModel  ();
+        }            
                        
     }
     
             
     private void addPackageFromZipUrl (String p, URL url) throws Exception {
-
-logger.info ("url = " + url);
         
         String s = url.toString ().substring (4);
         
@@ -152,20 +142,21 @@ logger.info ("url = " + url);
         
         Class c = Class.forName (p + '.' + name);
         
-        logger.info ("loading = " + c + "...");
+        logger.fine ("loading = " + c + "...");
         
         if (Modifier.isAbstract (c.getModifiers ())) {            
-            logger.info (" ...bypassing as abstract.");
+            logger.fine (" ...bypassing as abstract.");
             return;
         }
         
         if (!Table.class.isAssignableFrom (c)) {
-            logger.info (" ...not a Table subclass.");
+            logger.fine (" ...not a Table subclass.");
             return;
         }
             
         add ((Table) c.newInstance ());
-        logger.info (" ...ok.");
+        
+        logger.fine (" ...ok.");
 
     }
 
@@ -185,31 +176,30 @@ logger.info ("url = " + url);
     }
     
     public final void addPackage (String p) throws IOException {
-        
-        logger.log (Level.INFO, "Registering table definitions from {0}...", new Object[]{p});
 
-        String path = p.replace ('.', '/');
-        
         List<URL> urlList = new ArrayList<URL> ();
         
-        Collections.list (Thread.currentThread ().getContextClassLoader ().getResources (path)).forEach (url -> {
+        Collections.list (Thread.currentThread ().getContextClassLoader ().getResources (p.replace ('.', '/'))).forEach (url -> {
                 
             try {
-                if (!urlList.contains(url)) {
-                    addPackageFromUrl (p, url);
-                    urlList.add(url);
-                } else {
-                    logger.log (Level.WARNING, "Repeatable URLs found! Skipping...");
+                
+                if (urlList.contains (url)) {
+                    logger.warning ("Repeated URL:" + url);
+                    return;
                 }
+
+                addPackageFromUrl (p, url);
+                
+                urlList.add (url);
                     
             }
             catch (Exception ex) {
-                logger.log (Level.SEVERE, null, ex);
+                logger.log (Level.SEVERE, "Cannot add table desccriptions from " + url, ex);
             }
 
         });
                             
-        logger.log (Level.INFO, "Done registering table definitions from {0}.", new Object[]{p});
+        logger.info ("Loaded table definitions from " + p);
 
     }
     

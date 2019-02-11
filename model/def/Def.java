@@ -1,5 +1,8 @@
 package ru.eludia.base.model.def;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+
 /**
  * Экземпляры этого класса соответствуют значениям из раздела
  * DEFAULT в определении столбца таблицы (при CREATE TABLE и т. п.):
@@ -24,11 +27,22 @@ public abstract class Def {
      * Для определения полей, автоматически помечающих записи случайными UUID.
      */
     public static final UUID NEW_UUID = new UUID ();
+
+    public static final Null NULL = new Null ();
     
     /**
      * Генератор значений для подстановки в качестве параметров запросов
      * @return Значение, подходящее для PfreparedStatement.setXXX
      */
     public abstract Object getValue ();
+    
+    public static final Def valueOf (Object o) {
+        if (o == null) return NULL;
+        if (o instanceof Def) return (Def) o;
+        if (o instanceof Boolean) return Bool.valueOf ((Boolean) o);
+        if (o instanceof BigInteger) return Num.valueOf ((BigInteger) o);
+        if (o instanceof BigDecimal) return Num.valueOf ((BigDecimal) o);
+        return null;
+    }
     
 }

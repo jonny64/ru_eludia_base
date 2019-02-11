@@ -6,14 +6,22 @@ import java.beans.PropertyDescriptor;
 import java.io.InputStream;
 import java.io.StringReader;
 import java.lang.reflect.Method;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.GregorianCalendar;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import javax.json.Json;
+import javax.json.JsonArray;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonNumber;
 import javax.json.JsonObject;
@@ -24,6 +32,7 @@ import javax.json.JsonValue;
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
 import javax.xml.datatype.XMLGregorianCalendar;
+import ru.eludia.base.DB;
 
 public class TypeConverter {
     
@@ -42,6 +51,123 @@ public class TypeConverter {
             throw new IllegalStateException ("Cannot create DatatypeFactory", ex);
         }
 
+    }
+    
+    private static final Map primitiveWrapperMap = new HashMap();
+    static {
+         primitiveWrapperMap.put(Boolean.TYPE, Boolean.class);
+         primitiveWrapperMap.put(Byte.TYPE, Byte.class);
+         primitiveWrapperMap.put(Character.TYPE, Character.class);
+         primitiveWrapperMap.put(Short.TYPE, Short.class);
+         primitiveWrapperMap.put(Integer.TYPE, Integer.class);
+         primitiveWrapperMap.put(Long.TYPE, Long.class);
+         primitiveWrapperMap.put(Double.TYPE, Double.class);
+         primitiveWrapperMap.put(Float.TYPE, Float.class);
+    }
+    
+    /**
+     * Не-null строка из произвольного объекта
+     * @param o что угодно
+     * @return "" для null, o.toString () для прочих
+     */
+    public final static String String (Object o) {
+        if (o == null) return "";
+        if (o instanceof Boolean) return (Boolean) o ? "1" : "0"; 
+        return o.toString ();
+    }
+    
+    /**
+     * long-значение объекта любого подходящего типа
+     * @param o что угодно
+     * @return 0 для null, пустой строки ("") и false; 1 для true; эквивалент Long.parseLong (o.toString ()) для прочих
+     * @throws NumberFormatException если совсем никак
+     */
+    public final static long Long (Object o) {
+        
+        if (o == null) return 0L;
+        
+        if (DB.isLongValue (o)) return ((Number) o).longValue ();
+
+        if (o instanceof Boolean) return (Boolean) o ? 1L : 0L;
+
+        String s = o.toString ();
+        
+        switch (s.length ()) {
+            
+            case 0: return 0L;
+            
+            case 1: switch (s.charAt (0)) {
+                case '0': return 0L;
+                case '1': return 1L;
+                case '2': return 2L;
+                case '3': return 3L;
+                case '4': return 4L;
+                case '5': return 5L;
+                case '6': return 6L;
+                case '7': return 7L;
+                case '8': return 8L;
+                case '9': return 9L;
+                default: throw new NumberFormatException ("Not a long: '" + s + "'");
+            }
+            
+            default: return Long.parseLong (s);
+ 
+        }
+        
+    }
+
+    /**
+     * Логическое значение для произвольного объекта в логичечком контексте,
+     * по аналогии с Per5, js и прочими аналогичными языками.
+     * @param o что угодно
+     * @return false для:
+     * * null;
+     * * целого нуля (0) любого типа (в том числе BigDecimal)
+     * * строк: 
+     * ** "" (пустая строка)
+     * ** "0"
+     * ** " " (пробел)
+     * ** "N" / "n"
+     * ** "F" / "f" / "False" / "false"
+     * ** "null"
+     * и true для всех прочих значений, в том числе дробных 0.0.
+     */
+    public static final boolean Boolean (Object o) {
+
+        if (o == null) return false;
+        
+        if (o instanceof Boolean) return (Boolean) o;
+
+        if (DB.isLongValue (o)) return 0L != ((Number) o).longValue ();
+
+        final String s = o.toString ();        
+        int length = s.length ();
+        
+        switch (length) {
+            
+            case 0: return false;
+            
+            case 1: switch (s.charAt (0)) {
+                case '0':
+                case 'N':
+                case 'n':
+                case 'F':
+                case 'f':
+                case ' ':
+                    return false;
+                default: 
+                    return true;
+            }
+            
+            case 4: return !("null".equals (s));
+
+            case 5: return !("false".equals (s) || "False".equals (s));
+            
+            default: 
+                return true;
+
+        }
+        
     }
     
     /**
@@ -69,7 +195,7 @@ public class TypeConverter {
             Object value = kv.getValue ();
             
             if (value == null) return;
-            
+                        
             if (value instanceof JsonValue) {
                  job.add (kv.getKey (), (JsonValue) value);
             }
@@ -175,21 +301,10 @@ public class TypeConverter {
         
     }
     
-    /**
-     * Получение логического значения -- при условии того, что 
-     * истина в строковом представлении всегда выглядит как "1"
-     * @param v исходное значение
-     * @return true, если v приводится к значению "1"; 
-     * иначе -- false (в том числе для null!)
-     */
-    public static final Boolean bool (Object v) {
-        if (v == null) return false;
-        return "1".equals (v.toString ());
-    }
-    
     public static final Timestamp timestamp (Object v) {
         
         if (v instanceof XMLGregorianCalendar) return new Timestamp (((XMLGregorianCalendar) v).toGregorianCalendar ().getTimeInMillis ());
+        if (v instanceof java.util.Date) return new Timestamp (((java.util.Date) v).getTime ());
         
         String s = v.toString ().replace ("+03:00", "");
 
@@ -263,11 +378,11 @@ public class TypeConverter {
      * 
      * @return javaBean с требуемыми значениями полей
      */
-    public static final Object javaBean (Class clazz, Map<String, Object> values) {
+    public static final <T> T javaBean (Class<T> clazz, Map<String, Object> values) {
                 
         try {
             
-            Object javaBean = clazz.getConstructor ().newInstance ();
+            T javaBean = clazz.getConstructor ().newInstance ();
             
             BeanInfo info = Introspector.getBeanInfo (clazz);
             
@@ -283,16 +398,29 @@ public class TypeConverter {
                 
                 final Method writeMethod = pd.getWriteMethod ();
 
-                if (writeMethod == null) continue;
+                if (writeMethod == null) {
+                    final Method readMethod = pd.getReadMethod();
+                    if (!List.class.equals(readMethod.getReturnType())) continue;
+                    
+                    List list = (List)readMethod.invoke(javaBean);
+                    list.addAll((List)value);
+                    
+                    continue;
+                }
 
                 Class<?> type = writeMethod.getParameterTypes () [0];
+                
+                if (type.isPrimitive())
+                    type = (Class)primitiveWrapperMap.get(type);
                 
                 if (String.class.equals (type)) {
                     final String s = value.toString ();
                     if (s.isEmpty ()) continue;
                     writeMethod.invoke (javaBean, s);
-                }
-                else if (Boolean.class.equals (type) || "boolean".equals (type.getName ())) {
+                } 
+                else if (value.getClass().equals(type))
+                    writeMethod.invoke(javaBean, value);
+                else if (Boolean.class.equals (type)) {
                     final String s = value.toString ();
                     if (s.isEmpty ()) continue;
                     switch (s) {
@@ -309,6 +437,18 @@ public class TypeConverter {
                 else if (XMLGregorianCalendar.class.equals (type)) {
                     writeMethod.invoke (javaBean, XMLGregorianCalendar (value.toString ().replace (' ', 'T')));
                 }
+                else if (BigInteger.class.equals(type)) {
+                        writeMethod.invoke (javaBean, new BigInteger (value.toString ()));
+                }
+                else if (Byte.class.equals(type)
+                        || Short.class.equals(type)
+                        || Integer.class.equals(type)
+                        || Long.class.equals(type)
+                        || Double.class.equals(type)
+                        || Float.class.equals(type)
+                        || BigDecimal.class.equals(type)) {
+                        writeMethod.invoke(javaBean, type.getMethod("valueOf", String.class).invoke(value, value.toString()));
+                }
                 else {
                     logger.warning ("javaBean property setting not supported for " + type.getName ());
                 }
@@ -324,5 +464,104 @@ public class TypeConverter {
                 
     }
     
+    private static JsonValue jsonNumber (Object o) {
+        return Json.createArrayBuilder ().add (new BigDecimal (o.toString ())).build ().get (0);
+    }
+    
+    private static JsonValue jsonString (String s) {
+        return Json.createArrayBuilder ().add (s).build ().get (0);
+    }
+
+    public static JsonValue json (Object o) {
+        
+        if (o == null) return JsonValue.NULL;
+        
+        if (o instanceof Boolean) return Boolean.TRUE.equals (o) ? JsonValue.TRUE : JsonValue.FALSE;
+        
+        if (o instanceof Number) return jsonNumber (o);
+        if (o instanceof BigDecimal) return jsonNumber (o);
+        if (o instanceof BigInteger) return jsonNumber (o);
+                
+        if (o instanceof Collection) {
+            JsonArrayBuilder ab = Json.createArrayBuilder ();
+            for (Object i: (Collection) o) ab.add (json (i));
+            return ab.build ();
+        }
+        
+        if (o instanceof Map) {
+            final JsonObjectBuilder ob = Json.createObjectBuilder ();
+            final Map m = (Map) o;
+            m.keySet ().stream ().sorted ().forEach ((k) -> {
+                ob.add (k.toString (), json (m.get (k)));
+            });
+            return ob.build ();
+        }
+        
+        return jsonString (o.toString ());
+        
+    }
+    
+    public static Object pojo (JsonValue jv) {
+        
+        if (jv == null) return null;
+        if (JsonValue.NULL.equals (jv)) return null;
+        
+        if (JsonValue.TRUE.equals (jv)) return 1;
+        if (JsonValue.FALSE.equals (jv)) return 0;
+        
+        if (jv instanceof JsonNumber) {
+            
+            JsonNumber jn = (JsonNumber) jv;
+            
+            try {
+                return jn.longValueExact ();
+            }
+            catch (ArithmeticException ex) {
+                return jn.bigDecimalValue ();
+            }
+            
+        }
+        
+        if (jv instanceof JsonArray) {
+            
+            JsonArray ja = (JsonArray) jv;
+            
+            switch (ja.size ()) {
+                case 0:
+                    return Collections.EMPTY_LIST;
+                case 1:
+                    return Collections.singletonList (pojo (ja.get (0)));
+                default:
+                    return ja.stream ().map (TypeConverter::pojo).collect (Collectors.toList ());
+            }
+                        
+        }
+        
+        if (jv instanceof JsonObject) {
+            
+            JsonObject jo = (JsonObject) jv;
+            final int size = jo.size ();
+            
+            switch (size) {
+                case 0:
+                    return Collections.EMPTY_MAP;
+                case 1:
+                    Map.Entry<java.lang.String, JsonValue> entry = jo.entrySet ().stream ().findFirst ().get ();
+                    return Collections.singletonMap (entry.getKey (), pojo (entry.getValue ()));
+                default:
+                    Map<String, Object> m = new HashMap<> (size);
+                    for (String k: jo.keySet ()) m.put (k, pojo (jo.get (k)));
+                    return m;
+            }               
+            
+        }
+                
+        throw new IllegalArgumentException ("Cannot translate to POJO: " + jv);
+        
+    }
+
+    public static Map<String, Object> HASH (JsonObject jo) {
+        return (Map<String, Object>) pojo (jo);
+    }    
     
 }

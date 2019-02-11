@@ -52,75 +52,38 @@ public abstract class Table extends AbstractTable<Col, Key> {
     public Table (String name, String remark) {
         super (name, remark);
     }
-        
-    protected final void pk (String name, Type type, String remark) {
-        pk (new Col (name, type, remark));
-    }
-    
-    protected final void pk (String name, Type type, int length, String remark) {
-        pk (new Col (name, type, length, remark));
+            
+    protected final void pk (Object name, Type type, Object... p) {
+        pk (new Col (name, type, p));
     }
 
-    protected final void pk (String name, Type type, Def def, String remark) {
-        pk (new Col (name, type, def, remark));
+    protected final void col (Object name, Type type, Object... p) {
+        add (new Col (name, type, p));
     }
-
-    protected final void col (String name, Type type, String remark) {
-        add (new Col (name, type, remark));
-    }
-    
-    protected final void col (String name, Type type, Def def, String remark) {
-        add (new Col (name, type, def, remark));
-    }
-
-    protected final void col (String name, Type type, int length, String remark) {
-        add (new Col (name, type, length, remark));
-    }
-    
-    protected final void col (String name, Type type, int length, Def def, String remark) {
-        add (new Col (name, type, length, def, remark));
-    }
-
-    protected final void col (String name, Type type, int length, int precision, String remark) {
-        add (new Col (name, type, length, precision, remark));
-    }
-    
-    protected final void col (String name, Type type, int length, int precision, Def def, String remark) {
-        add (new Col (name, type, length, precision, def, remark));
-    }    
-    
+      
     protected final void pkref (String name, Class t, String remark) {
         pk (new Ref (name, t, remark));
     }
-    
-    protected final void fk (String name, Class t, String remark) {
-        add (new Ref (name, t, remark));
-    }
-    
-    protected final void fk (String name, Class t, Def def, String remark) {
-        add (new Ref (name, t, def, remark));
+        
+    protected final void fk (String name, Class t, Object... p) {
+        add (new Ref (name, t, p));
     }
 
-    protected final void key (String name, String... parts) {
+    protected final void key (String name, Object... parts) {
         add (new Key (name, parts));
     }
     
-    protected final void unique (String name, String... parts) {
+    protected final void unique (String name, Object... parts) {
         Key key = new Key (name, parts);
         key.setUnique (true);
         add (key);
     }
 
-    protected final void ref (String name, Class t, Def def, String remark) {
-        add (new Ref (name, t, def, remark));
+    protected final void ref (String name, Class t, Object... p) {
+        add (new Ref (name, t, p));
         add (new Key (name, name));        
     }
-    
-    protected final void ref (String name, Class t, String remark) {
-        add (new Ref (name, t, remark));
-        add (new Key (name, name));        
-    }
-    
+        
     protected final void item (Object... o) {
         if (data.isEmpty ()) data = new ArrayList<> (1);
         data.add (DB.HASH (o));
@@ -129,6 +92,10 @@ public abstract class Table extends AbstractTable<Col, Key> {
     protected final void trigger (String when, String what) {
         Trigger trg = new Trigger (when, what);
         triggers.add (trg);
+    }
+    
+    protected final void cols (Class clazz) {                
+        for (Object value: clazz.getEnumConstants ()) add (((ColEnum) value).getCol ().clone ());
     }
 
     protected final void data (Class clazz) {
@@ -204,11 +171,122 @@ public abstract class Table extends AbstractTable<Col, Key> {
             m.put (colName, DB.to.object (data.get (colName)));
             
         }
-        
-        for (int i = 0; i < len; i += 2) m.put (o [i].toString (), o [i + 1]);
-        
+
+        for (int i = 0; i < len; i += 2) m.put (DB.lc (o [i]), o [i + 1]);
+
         return m;
         
+    }
+/*    
+    public Map<String, Object> randomHASH (Map<String, Object> values) {
+
+        Map<String, Object> result = DB.HASH ();
+
+        for (Col c: this.columns.values ()) {            
+            final String k = c.getName ();            
+            if (!values.containsKey (k)) result.put (k, c.getValueGenerator ().get ());            
+        }
+        
+        result.putAll (values);
+
+        return result;
+
+    }    
+*/    
+    /**
+     * Герератор записей со случайными значениями,
+     * определяемыми свойствами столбцов охватывающей таблицы.
+     */    
+    public class Sampler {
+        
+        Map<String, Object> values;
+        List<Col> randomCols = new ArrayList<> ();
+        List<Col> triggeredCols = new ArrayList<> ();
+
+        /**
+         * Конструктор
+         * @param maps наборы значений, которые будут копироваться
+         * в каждую сгенерированную запись. В том числе под именами, 
+         * которы нет среди столбцов таблицы.
+         */
+        public Sampler (Map<String, Object>... maps) {
+            
+            this.values = DB.HASH ();
+            
+            for (Map<String, Object> map: maps) values.putAll (map);
+            
+            for (Col c: columns.values ()) {
+                
+                final String k = c.getName ();
+                
+                if (values.containsKey (k)) {
+                    
+                    if (values.get (k) instanceof Def) {
+                        randomCols.add (c);
+                        values.remove (k);
+                    }
+                    
+                    continue;
+                    
+                }
+                
+                randomCols.add (c);
+                
+                if (c.isNullable () || c.getType () == Type.BOOLEAN) triggeredCols.add (c);
+                
+            }
+
+        }
+                
+        /**
+         * Новая запись со случайными значениями.
+         * Поля, входящие в исходные values, копируются.
+         * BOOLEAN-поля заполяются нулями.
+         * Для остальных полей таблицы генерируются непустые значения.
+         */
+        public Map<String, Object> nextHASH () {
+            Map<String, Object> result = DB.HASH ();
+            for (Col c: randomCols) result.put (c.getName (), c.getType () == Type.BOOLEAN ? 0 : c.getValueGenerator ().get ());
+            result.putAll (values);
+            return result;
+        }
+
+        /**
+         * Число всевозможных наборов полей, допускающих пустые значения.
+         * Равно 2^(число полей, допускающих пустые значения)
+         */
+        public int getCount () {
+            return 1 << triggeredCols.size ();
+        }
+         
+        /**
+         * Урезание данных (переопределение null'ами) по заданной маске
+         * @param src исходная запись (полученная как nextHASH)
+         * @param mask битовая маска для вырезания: число от 0 до getCount ()
+         * @return копия исходной записи, где для некоторых полей 
+         * (соответствующих 1 в mask) значения заменены на null.
+         */
+        public Map<String, Object> cutOut (Map<String, Object> src, int mask) {
+            
+            Map<String, Object> result = DB.HASH ();            
+            result.putAll (src);
+            int m = 1;
+            
+            for (int i = 0; i < triggeredCols.size (); i ++) {
+                
+                if ((mask & m) != 0) {
+                    final Col col = triggeredCols.get (i);
+                    result.put (col.getName (), col.type == Type.BOOLEAN ? 1 : null);
+                }
+                
+                m <<= 1;
+                
+            }
+            
+            return result;
+            
+        }        
+
     }
 
 }

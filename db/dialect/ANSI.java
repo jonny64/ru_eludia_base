@@ -7,11 +7,18 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import ru.eludia.base.DB;
 import ru.eludia.base.db.sql.build.QP;
 import ru.eludia.base.db.sql.build.TableSQLBuilder;
@@ -38,6 +45,7 @@ import ru.eludia.base.db.sql.gen.Part;
 import ru.eludia.base.db.sql.gen.Predicate;
 import ru.eludia.base.db.sql.gen.ResultCol;
 import ru.eludia.base.db.sql.gen.Select;
+import ru.eludia.base.model.phys.PhysicalView;
 
 public abstract class ANSI extends DB {
     
@@ -68,14 +76,20 @@ public abstract class ANSI extends DB {
 
     }
     
-    protected void setNotNullParam (PreparedStatement st, int n, JDBCType type, Object value) throws SQLException {
+    protected void setNotNullParam (PreparedStatement st, int n, JDBCType type, int length, Object value) throws SQLException {
         
         if (value instanceof Def) value = ((Def) value).getValue ();
         
         switch (type) {
             
             case NUMERIC:
-                setNumericParam (st, n, value);
+                try {
+                    setNumericParam (st, n, value);
+                }
+                catch (NumberFormatException ex) {
+                    logger.severe ("Problem value: '" + value + "', " + value.getClass ().getName ());
+                    throw ex;
+                }
                 break;
 
             case DATE:
@@ -91,9 +105,14 @@ public abstract class ANSI extends DB {
             case BLOB: 
                 st.setBinaryStream (n, to.binaryStream (value));
                 break;
-
+                
             default: 
-                st.setString (n, value.toString ());
+                String s = value.toString ();
+                if (length > 0 && s.length () > length) {
+                    logger.info ("Truncating '" + s + "' to first " + length + " chars");
+                    s = s.substring (0, length);
+                }
+                st.setString (n, s);
         
         }
         
@@ -138,9 +157,9 @@ public abstract class ANSI extends DB {
     }
     
     @Override
-    public final void setParam (PreparedStatement st, int n, JDBCType type, Object value) throws SQLException {
+    public final void setParam (PreparedStatement st, int n, JDBCType type, int length, Object value) throws SQLException {
         
-        if (value == null) setNullParam (st, n, type); else setNotNullParam (st, n, type, value);
+        if (value == null) setNullParam (st, n, type); else setNotNullParam (st, n, type, length, value);
         
     }
 
@@ -163,15 +182,13 @@ public abstract class ANSI extends DB {
         b.append ("UPDATE ");
         b.append (b.getTable ().getName ());
         b.append (" SET ");
-        for (PhysicalCol i: b.getCols ()) {
-            if (i.isPk ()) continue;
+        for (PhysicalCol i: b.getNonKeyCols ()) {
             b.append (i.getName ());
             b.append ("=?,");
         }
         b.setLastChar (' ');
         b.append ("WHERE ");
-        for (PhysicalCol i: b.getCols ()) {
-            if (!i.isPk ()) continue;
+        for (PhysicalCol i: b.getKeyCols ()) {
             if (b.getLastChar () == '?') b.append (" AND ");
             b.append (i.getName ());
             b.append ("=?");
@@ -270,6 +287,10 @@ public abstract class ANSI extends DB {
     
     void addSelectFilter (QP qp, Part part, Filter f) {
         
+        Filter nextFilter = f.getNextFilter ();
+        
+        if (nextFilter != null) qp.append ('(');
+        
         Predicate p = f.getPredicate ();
 
         if (p.isNot ()) qp.append ("NOT(");
@@ -291,6 +312,12 @@ public abstract class ANSI extends DB {
         if (p.isOrNull ()) qp.append (')');
         
         if (p.isNot ()) qp.append (')');
+        
+        if (nextFilter != null) {
+            qp.append (" OR ");
+            addSelectFilter (qp, part, nextFilter);
+            qp.append (')');
+        }
 
     }
     
@@ -436,13 +463,25 @@ public abstract class ANSI extends DB {
         }
         
     }
+    
+    public boolean equalDef (PhysicalCol asIs, PhysicalCol toBe) {
+        
+        String a = asIs.getDef ();
+        String b = toBe.getDef ();
+        
+        if (a == null && b == null) return true;
+        if (a == null && b != null) return false;
+        if (a != null && b == null) return false;
+        if (a.equals (b)) return true;
+        
+        return false;
+        
+    }
 
     protected void appendColDefaultExpression (QP qp, PhysicalCol col) {
-                
-        if (col.getDef () == null) return;
-        
+
         qp.append (" DEFAULT ");
-        qp.append (col.getDef ());
+        qp.append (col.getDef () == null ? "NULL" : col.getDef ());
         
     }
     
@@ -483,27 +522,37 @@ public abstract class ANSI extends DB {
     protected void adjustNullability (Table table, PhysicalCol col, NullAction act) throws SQLException {
         
         if (act == null) return;
-        
+                
         switch (act) {
             case SET:
                 setNullability (table, col, "NULL");
                 break;
             case UNSET:
-                fillInNulls (table, col);
-                setNullability (table, col, "NOT NULL");
+                setNotNull (table, col);
                 break;
         }
         
     }    
 
+    private void setNotNull (Table table, PhysicalCol col) throws SQLException {
+        
+        if (col.getDef () == null) {
+            logger.warning ("Cannot SET NOT NULL " + table.getName () + '.' + col.getName () + ", missing DEFAULT");
+            return;
+        }
+        
+        fillInNulls (table, col);
+        
+        setNullability (table, col, "NOT NULL");
+        
+    }
+
     protected void update (Table table, PhysicalCol asIs, PhysicalCol toBe) throws SQLException {
-
-        logger.fine ("Updating " + table + '.' + asIs.getName () + ": " + asIs + " to " + toBe);
-
-        Diff diff = new Diff (asIs, toBe, getTypeActionGetter ());
         
+        Diff diff = new Diff (asIs, toBe, this);
+                
         adjustNullability (table, toBe, diff.getNullAction ());
-        
+
         update (table, toBe, diff.getTypeAction ());
 
         if (diff.isCommentChanged ()) comment (table, toBe);
@@ -529,26 +578,24 @@ public abstract class ANSI extends DB {
     protected void setPk (Table table) throws SQLException {        
         d0 (genSetPkSql (table));
     }
-    
-    protected final void create (Table table) throws SQLException {
-        
+
+    protected final void create (Table table, List<Ref> newRefs) throws SQLException {
+
         logger.fine ("Creating " + table.getName ());
-        
+
         d0 (genCreateSql (table));
-        
+
         setPk (table);
-        
+
         comment (table);
-        
+
         for (Col col: table.getColumns ().values ()) {
-            
+
             if (col instanceof Ref) newRefs.add ((Ref) col);
 
             comment (table, col);
-            
+
         }
-        
-        for (Key key: table.getKeys ().values ()) create (table, toPhysical (table, key));
 
     }
 
@@ -599,7 +646,7 @@ public abstract class ANSI extends DB {
                 
     }
     
-    private void update (PhysicalTable oldTable, Table newTable, Col toBe) throws SQLException {
+    private void update (PhysicalTable oldTable, Table newTable, Col toBe, List<Ref> newRefs) throws SQLException {
         
         PhysicalCol asIs = (PhysicalCol) oldTable.getColumns ().get (toBe.getName ());
         
@@ -617,60 +664,74 @@ public abstract class ANSI extends DB {
 
     }    
 
-    private void update (PhysicalTable oldTable, Table newTable) throws SQLException {
-
-        logger.fine ("Updating " + oldTable + " -> " + newTable);
+    private void update (PhysicalTable oldTable, Table newTable, List<Ref> newRefs) throws SQLException {
 
         final Collection<Col> cols = newTable.getColumns ().values ();
 
-        for (Col toBe: cols) if (!toBe.toPhysical ().isVirtual ()) update (oldTable, newTable, toBe);
-        for (Col toBe: cols) if ( toBe.toPhysical ().isVirtual ()) update (oldTable, newTable, toBe);
-
-        for (Key i: newTable.getKeys ().values ()) {
-            
-            PhysicalKey toBe = toPhysical (newTable, i);
-            
-            PhysicalKey asIs = (PhysicalKey) oldTable.getKeys ().get (toBe.getName ());
-            
-            if (asIs == null) {
-                
-                create (newTable, toBe);
-
-            }
-            else if (!asIs.equals (toBe)) {
-                
-                recreate (newTable, toBe);
-                
-            }            
-            
-        }
+        for (Col toBe: cols) if (!toBe.toPhysical ().isVirtual ()) update (oldTable, newTable, toBe, newRefs);
+        for (Col toBe: cols) if ( toBe.toPhysical ().isVirtual ()) update (oldTable, newTable, toBe, newRefs);
                     
         if (!oldTable.getRemark ().equals (newTable.getRemark ())) comment (newTable);
         
     }
-    
-    List<Ref> newRefs = null;
-    
+        
     private final void updateData (Table t) throws SQLException {
     
         List<Map <String, Object>> data = t.getData ();
         
         if (data.isEmpty ()) return;
         
-        upsert (t, data, null);
+        upsert (t, data);
         
     }
+    
+    private static final Pattern RE_FIELD = Pattern.compile ("(\"[A-Za-z_][A-Za-z0-9_]*\")");
     
     @Override
     public final void adjustTable (Table t) {
         
         t.setModel (model);
-                
+
+        Map<String, PhysicalCol> physicalVirtualCols = new HashMap<> ();
+
         for (Col c: t.getColumns ().values ()) {
             c.setTable (t);
             adjustCol (c);
+            PhysicalCol phy = c.toPhysical ();
+            if (phy.isVirtual ()) physicalVirtualCols.put ('"' + phy.getName ().toUpperCase () + '"', phy);
         }
-        
+
+        int tries = physicalVirtualCols.size ();
+
+        for (int n = 0; n < tries; n ++) {
+
+            boolean found = false;
+
+            for (PhysicalCol v: physicalVirtualCols.values ()) {
+
+                String def = v.getDef ();
+
+                Matcher m = RE_FIELD.matcher (def);
+                
+                while (m.find ()) {
+                    String key = m.group ().toUpperCase ();
+                    if (!physicalVirtualCols.containsKey (key)) continue;
+                    def = def.replace (m.group (), physicalVirtualCols.get (key).getDef ());
+                    found = true;
+                }
+
+                if (!found) continue;
+
+                logger.info (t.getName () + '.' + v.getName () + ": " + v.getDef () + " .. " + def);
+
+                v.setDef (def);
+
+            }
+
+            if (!found) break;
+
+        }
+
     }
 
     private final void adjustCol (Col col) {
@@ -686,10 +747,9 @@ public abstract class ANSI extends DB {
         
         physical.setRemark   (canonical.getRemark  ());
         physical.setNullable (col.isNullable ());
-        physical.setPkPos    (col.getPkPos   ());
         
         adjustDefaultValue (col, physical);
-        
+
         return physical;
         
     }
@@ -722,67 +782,136 @@ public abstract class ANSI extends DB {
     
     @Override
     public void updateSchema (Table... wishes) throws SQLException {
-        
-        PhysicalModel ex = getExistingModel ();
-        
-        newRefs = new ArrayList <> ();
-
-        for (Table toBe: wishes) {
-            
-            adjustTable (toBe);
-
-            PhysicalTable asIs = ex.get (toBe.getName ());
-
-            if (asIs == null) create (toBe); else update (asIs, toBe);
-            
-        }
-        
-        for (Ref ref: newRefs) create (ref);        
-        
-        checkModel();
-
+        updateSchema (Arrays.asList (wishes));
     }
     
-    public void updateSchema () throws SQLException {
+    public void updateSchema (Collection<Table> tv) throws SQLException {
         
         PhysicalModel ex = getExistingModel ();
 
-        newRefs = new ArrayList <> ();
+        List<Table> tables = new ArrayList<> ();
+        List<View>  views  = new ArrayList<> ();
+        List<Ref> newRefs  = new ArrayList<> ();
+        
+        for (Table i: tv) if (i instanceof View) views.add ((View) i); else tables.add (i);
                 
-        for (Table toBe: model.getTables ()) {
-            
-            if (toBe instanceof View) {
-                
-                update ((View) toBe);
-                
-            }
-            else {
-
-                PhysicalTable asIs = ex.get (toBe.getName ());
-            
-                if (asIs == null) create (toBe); else update (asIs, toBe);
-            
-            }
-                        
+        for (Table toBe: tables) {            
+            PhysicalTable asIs = ex.get (toBe.getName ());            
+            if (asIs == null) create (toBe, newRefs); else update (asIs, toBe, newRefs);                                    
         }
+        
+        addIndexes (ex);
+        
+        for (Table toBe: tables) {
+            
+            PhysicalTable asIs = ex.get (toBe.getName ());
+            
+            for (Key k: toBe.getKeys ().values ()) {
+
+                PhysicalKey keyToBe = toPhysical (toBe, k);
+
+                PhysicalKey keyAsIs = asIs == null ? null : (PhysicalKey) asIs.getKeys ().get (keyToBe.getName ());
+                
+                if (keyAsIs == null) {
+                    
+                    try {
+                        create (toBe, keyToBe);
+                    }
+                    catch (Exception e) {
+                        recreate (toBe, keyToBe);
+                    }
+
+                }
+                else if (!keyAsIs.equals (keyToBe)) {
+
+                    recreate (toBe, keyToBe);
+
+                }                
+                
+            }
+            
+        }                
+        
+        for (Table t: tables) updateData (t);        
+        
+        updateViews (ex, views);        
         
         for (Ref ref: newRefs) create (ref);
         
-        for (Table t: model.getTables ()) if (!(t instanceof View)) updateData (t);
+        for (Table toBe: tables) {
+            
+            if (toBe.getTriggers ().isEmpty ()) continue;
+
+            PhysicalTable asIs = ex.get (toBe.getName ());            
+            
+            for (Trigger trg: toBe.getTriggers ().values ()) {
+                
+                if (asIs != null) {
+
+                    Trigger trgAsIs = asIs.getTriggers ().get (trg.getName ());
+                    
+                    if (trgAsIs == null) {
+                        logger.finest (toBe.getName () + '.' + trg.getName () + " not found");
+                    }
+                    else if (!trgAsIs.getWhat ().equals (trg.getWhat ())) {
+                        logger.finest (toBe.getName () + '.' + trg.getName () + ": '" + trgAsIs.getWhat () + "' -> '" + trg.getWhat () + "'");
+                    }
+                    else {
+                        continue;
+                    }
+                    
+                }
+                
+                update (toBe, trg);
+                
+            }
         
-        for (Table t: model.getTables ()) for (Trigger trg: t.getTriggers ().values ()) update (t, trg);
-        
-        checkModel();
+        }
+
+        checkModel ();
+
+    }   
+
+    private void updateViews (PhysicalModel ex, List<View> views) throws SQLException {
+                        
+        for (View viewToBe: views) {
+
+            if (DB.eq (viewToBe.getSQL (), ex.getSql (viewToBe))) {
+
+                for (Col col: viewToBe.getColumns ().values ()) 
+                    
+                    if (!DB.eq (col.getRemark (), ex.getRemark (col))) 
+                        
+                        comment (viewToBe, col);
+
+            }
+            else {
+                
+                update (viewToBe);
+                
+                try {
+                    for (Col col: viewToBe.getColumns ().values ()) comment (viewToBe, col);
+                }
+                catch (SQLException e) {
+                    // do nothing, fix in checkModel ()
+                }
+                
+            }
+
+        }
 
     }
-    protected void checkModel () throws SQLException {
+
+    public void updateSchema () throws SQLException {
+        updateSchema (model.getTables ());
     }
+    
+    protected void checkModel () throws SQLException {}
     
     protected abstract PhysicalKey toPhysical (Table table, Key k);
     protected abstract Col toCanonical (Col col);
     protected abstract String toSQL (Def def, JDBCType type);
     protected abstract PhysicalCol toBasicPhysical (Col col);
-    protected abstract BiFunction<JDBCType, JDBCType, TypeAction> getTypeActionGetter();
     protected abstract PhysicalModel getExistingModel () throws SQLException;
     protected abstract QP genCreateSql (Table table) throws SQLException;
     protected abstract QP genSetPkSql (Table table);
@@ -798,8 +927,6 @@ public abstract class ANSI extends DB {
     protected abstract String getTypeName (PhysicalCol col);
     protected abstract void update (View view) throws SQLException;
     protected abstract void update (Table table, Trigger trg) throws SQLException;
-    
-    
-    
+    protected abstract void addIndexes (PhysicalModel m) throws SQLException;
     
 }

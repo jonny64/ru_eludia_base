@@ -3,16 +3,21 @@ package ru.eludia.base;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.sql.Blob;
 import ru.eludia.base.db.sql.build.QP;
 import ru.eludia.base.db.util.JDBCConsumer;
 import java.sql.Connection;
+import java.sql.JDBCType;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,7 +35,6 @@ import ru.eludia.base.db.sql.build.SQLBuilder;
 import ru.eludia.base.db.sql.build.TableRecordSQLBuilder;
 import ru.eludia.base.db.sql.build.TableRecordListBuilder;
 import ru.eludia.base.db.sql.build.TableSQLBuilder;
-import ru.eludia.base.Model;
 import ru.eludia.base.model.phys.PhysicalCol;
 import ru.eludia.base.model.abs.Roster;
 import ru.eludia.base.model.Table;
@@ -40,6 +44,8 @@ import ru.eludia.base.db.util.ParamSetter;
 import ru.eludia.base.db.util.TypeConverter;
 import javax.xml.datatype.XMLGregorianCalendar;
 import ru.eludia.base.model.Col;
+import ru.eludia.base.model.ColEnum;
+import ru.eludia.base.model.diff.TypeAction;
 
 /**
  * Обёртка над JDBC Connection, через которую доступна большая часть API БД Dia.java.
@@ -64,6 +70,51 @@ public abstract class DB implements AutoCloseable, ParamSetter {
 
     protected Connection cn;
     protected Model model;
+    
+    /**
+     * Проверка того, сводится ли значение переданного объекта к 
+     * long-числу, которое можно получить как Number::longValue
+     * @param o Любой объект или null
+     * @return true, если o -- экземпляр Long, Integer, Short, Byte, 
+     * либо такой BigDecimal/BigInteger, что longValue () не приводит
+     * к потере точности
+     */
+    public static final boolean isLongValue (Object o) {
+        if (o == null) return false;
+        if (!(o instanceof Number)) return false;
+        if (o instanceof Long) return true;
+        if (o instanceof Integer) return true;
+        if (o instanceof BigDecimal) {
+            BigDecimal bd = (BigDecimal) o;
+            return bd.scale () == 0 && bd.abs ().compareTo (BigDecimal.valueOf (Long.MAX_VALUE)) < 1;
+        }
+        if (o instanceof BigInteger) {
+            BigInteger bi = (BigInteger) o;
+            return bi.abs ().compareTo (BigInteger.valueOf (Long.MAX_VALUE)) < 1;
+        }
+        if (o instanceof Short) return true;
+        if (o instanceof Byte) return true;
+        return false;
+    }
+
+    /**
+     * Сравнение значений произвольных классов 
+     * в строковом контексте по аналогии с Perl5
+     * @param x Любой объект или null
+     * @param y Любой объект или null
+     * @return true, если совпадают строковые представления x и y, где null считается за строку нулевой длины ("").
+     */
+    public static final boolean eq (Object x, Object y) {
+        if (x == null) return y == null || "".equals (y);
+        if (y == null || "".equals (y)) return "".equals (x);
+        if (x.getClass ().equals (y.getClass ()) && x.equals (y)) return true;
+        if (isLongValue (x) && isLongValue (y)) return ((Number) x).longValue () == ((Number) y).longValue ();
+        return x.toString ().equals (y.toString ());
+    }
+    
+    public final static boolean ok (Object o) {
+        return DB.to.Boolean (o);
+    }
 
     /**
      * Редко используемый метод для получения вложенного JDBC Connection.
@@ -80,13 +131,28 @@ public abstract class DB implements AutoCloseable, ParamSetter {
     
     @Override
     public void close () {
+        
         try {
             if (!cn.getAutoCommit ()) cn.rollback ();
+        }
+        catch (SQLException ex) {
+            logger.log (Level.SEVERE, "Can't rollback last transaction", ex);
+        }
+
+        try {
+            if (!cn.getAutoCommit ()) cn.setAutoCommit (true);
+        }
+        catch (SQLException ex) {
+            logger.log (Level.SEVERE, "Can't set back AutoCommit", ex);
+        }
+        
+        try {
             cn.close ();
         }
         catch (SQLException ex) {
-            throw new IllegalStateException (ex);
+            logger.log (Level.SEVERE, "Can't close connection", ex);
         }
+                
     }    
     
     /**
@@ -131,10 +197,20 @@ public abstract class DB implements AutoCloseable, ParamSetter {
         
         Map <String, Object> m = new HashMap (len >> 1);
         
-        for (int i = 0; i < len; i += 2) m.put (o [i].toString (), o [i + 1]);
+        for (int i = 0; i < len; i += 2) m.put (lc (o [i]), o [i + 1]);
         
         return m;
         
+    }
+    
+    public static String lc (Object o) {
+        if (o == null) return null;
+        if (o instanceof ColEnum) return ((ColEnum) o).lc ();
+        return o.toString ().toLowerCase ();
+    }
+
+    public static void set (Map<String, Object> h, Object k, Object v) {
+        h.put (k.toString ().toLowerCase (), v);
     }
     
     /**
@@ -228,21 +304,11 @@ public abstract class DB implements AutoCloseable, ParamSetter {
      */
     public final void insert (Table t, List<Map <String, Object>> records) throws SQLException {        
         if (records == null || records.isEmpty ()) return;       
-        TableRecordListBuilder b = new TableRecordListBuilder (t, records);
+        TableRecordListBuilder b = new TableRecordListBuilder (t, records, null);
         genInsertSql (b);
         d0 (b);        
     }
-    
-    /**
-     * Синхронизация отдельной записи данных по первичному ключу.
-     * @param c Класс описания таблицы
-     * @param record Хэш со значениями полей. Первичный ключ должен быть указан, остальные -- не обязательно.
-     * @throws SQLException
-     */
-    public final void upsert (Class c, Map <String, Object> record) throws SQLException {
-        upsert (c, record, null);
-    }            
-    
+
     /**
      * Синхронизация отдельной записи данных по заданному ключу.
      * @param c Класс описания таблицы
@@ -250,7 +316,7 @@ public abstract class DB implements AutoCloseable, ParamSetter {
      * @param key Список имён полей, составляющих ключ синхронизации. Может быть null или пустым -- тогда используется первичный ключ.
      * @throws SQLException
      */
-    public final void upsert (Class c, Map <String, Object> record, String [] key) throws SQLException {
+    public final void upsert (Class c, Map <String, Object> record, String... key) throws SQLException {
         upsert (model.get (c), record, key);
     }            
     
@@ -261,15 +327,10 @@ public abstract class DB implements AutoCloseable, ParamSetter {
      * @param key Список имён полей, составляющих ключ синхронизации. Может быть null или пустым -- тогда используется первичный ключ.
      * @throws SQLException
      */
-    public final void upsert (Table t, Map <String, Object> record, String [] key) throws SQLException {
-                                
-        if (key == null || key.length == 0) key = (String []) t.getPkColNames ();
-        
-        Roster<PhysicalCol> keyCols = new Roster<> ();        
-        for (String name: key) keyCols.add (t.getColumn (name).toPhysical ());
-                
-        TableRecordSQLBuilder b = new TableRecordSQLBuilder (t, record);
-        genUpsertSql (b, keyCols);
+    public final void upsert (Table t, Map <String, Object> record, String... key) throws SQLException {
+
+        TableRecordSQLBuilder b = new TableRecordSQLBuilder (t, record, Arrays.asList (key));
+        genUpsertSql (b);
         d0 (b);        
         
     }
@@ -287,7 +348,7 @@ public abstract class DB implements AutoCloseable, ParamSetter {
      * @param key Список имён полей, составляющих ключ синхронизации. Может быть null или пустым -- тогда используется первичный ключ.
      * @throws SQLException
      */
-    public final void upsert (Class c, List<Map <String, Object>> records, String [] key) throws SQLException {
+    public final void upsert (Class c, List<Map <String, Object>> records, String... key) throws SQLException {
         upsert (model.get (c), records, key);
     }            
 
@@ -304,17 +365,12 @@ public abstract class DB implements AutoCloseable, ParamSetter {
      * @param key Список имён полей, составляющих ключ синхронизации. Может быть null или пустым -- тогда используется первичный ключ.
      * @throws SQLException
      */
-    public final void upsert (Table t, List<Map <String, Object>> records, String [] key) throws SQLException {
+    public final void upsert (Table t, List<Map <String, Object>> records, String... key) throws SQLException {
         
         if (records == null || records.size () == 0) return;
-                        
-        if (key == null || key.length == 0) key = t.getPkColNames ();
-        
-        Roster<PhysicalCol> keyCols = new Roster<> ();        
-        for (String name: key) keyCols.add (t.getColumn (name).toPhysical ());
-                
-        TableRecordListBuilder b = new TableRecordListBuilder (t, records);
-        genUpsertSql (b, keyCols);
+                                        
+        TableRecordListBuilder b = new TableRecordListBuilder (t, records, Arrays.asList (key));
+        genUpsertSql (b);
         d0 (b);        
         
     }  
@@ -332,7 +388,7 @@ public abstract class DB implements AutoCloseable, ParamSetter {
      * @param key Список имён полей, составляющих ключ синхронизации. Может быть null или пустым -- тогда используется первичный ключ.
      * @throws SQLException
      */
-    public final void upsert (Class t, Stream<Map <String, Object>> records, String [] key) throws SQLException {
+    public final void upsert (Class t, Stream<Map <String, Object>> records, String... key) throws SQLException {
         upsert (t, records.collect (Collectors.toList ()), key);
     }
 
@@ -349,7 +405,7 @@ public abstract class DB implements AutoCloseable, ParamSetter {
      * @param key Список имён полей, составляющих ключ синхронизации. Может быть null или пустым -- тогда используется первичный ключ.
      * @throws SQLException
      */
-    public final void upsert (Table t, Stream<Map <String, Object>> records, String [] key) throws SQLException {
+    public final void upsert (Table t, Stream<Map <String, Object>> records, String... key) throws SQLException {
         upsert (t, records.collect (Collectors.toList ()), key);
     }
 
@@ -367,10 +423,8 @@ public abstract class DB implements AutoCloseable, ParamSetter {
      * @param key Список имён полей, составляющих ключ синхронизации. Может быть null или пустым -- тогда используется первичный ключ records.
      * @throws SQLException
      */
-    public final void upsert (Table t, Table records, String [] key) throws SQLException {
-        
-        if (key == null || key.length == 0) key = t.getPkColNames ();
-        
+    public final void upsert (Table t, Table records, String... key) throws SQLException {
+
         d0 (genUpsertSql (t, records, key));
         
     }      
@@ -389,7 +443,7 @@ public abstract class DB implements AutoCloseable, ParamSetter {
      * @param key Список имён полей, составляющих ключ синхронизации. Может быть null или пустым -- тогда используется первичный ключ records.
      * @throws SQLException
      */
-    public final void upsert (Class t, Class records, String [] key) throws SQLException {
+    public final void upsert (Class t, Class records, String... key) throws SQLException {
         
         upsert (model.get (t), model.get (records), key);
         
@@ -490,9 +544,11 @@ public abstract class DB implements AutoCloseable, ParamSetter {
         });
 
         delete (selectToDelete);
-        upsert (t, records, uk.toArray (new String [0]));
+        upsert (t, records, uk.toArray (STRING_ARRAY_TEMPLATE));
         
     }
+    
+    private static final String [] STRING_ARRAY_TEMPLATE = new String [0];
     
     /**
      * Обновление пакета записей по первичному ключу.
@@ -504,11 +560,12 @@ public abstract class DB implements AutoCloseable, ParamSetter {
      * 
      * @param t Описание таблицы
      * @param records Список обновляемых записей.
+     * @param key Список имён столбцов, составляющих ключ для поиска. Если пуст, используется первичный ключ таблицы.
      * @throws SQLException
      */
-    public final void update (Table t, List<Map <String, Object>> records) throws SQLException {        
+    public final void update (Table t, List<Map <String, Object>> records, String... key) throws SQLException {        
         if (records == null || records.size () == 0) return;
-        TableRecordListBuilder b = new TableRecordListBuilder (t, records);
+        TableRecordListBuilder b = new TableRecordListBuilder (t, records, Arrays.asList (key));
         genUpdateSql (b);
         d0 (b);        
     }
@@ -523,27 +580,32 @@ public abstract class DB implements AutoCloseable, ParamSetter {
      * 
      * @param c Описание таблицы
      * @param records Список обновляемых записей. У каждой из них должен быть 
+     * @param key Список имён столбцов, составляющих ключ для поиска. Если пуст, используется первичный ключ таблицы.
      * @throws SQLException
      */
-    public final void update (Class c, List<Map <String, Object>> records) throws SQLException {
-        update (model.get (c), records);
+    public final void update (Class c, List<Map <String, Object>> records, String... key) throws SQLException {
+        update (model.get (c), records, key);
     }
 
     /**
      * Обновление отдельной записи по первичному ключу.
      *
      * @param t Описание таблицы
-     * @param record Обновляемая запись. Первичный ключ должен быть задан.
+     * @param record Обновляемая запись. Ключ должен быть задан.
+     * @param key Список имён столбцов, составляющих ключ для поиска. Если пуст, используется первичный ключ таблицы.
      * @throws SQLException
      */
-    public final void update (Table t, Map <String, Object> record) throws SQLException {
-        for (Col pkCol: t.getPk ()) {
-            String name = pkCol.getName ();
-            if (!record.containsKey (name)) throw new IllegalArgumentException ("PK " + name + " not set for " + t.getName () + ": " + record);
-        }
-        TableRecordSQLBuilder b = new TableRecordSQLBuilder (t, record);
+ 
+    public final void update (Table t, Map <String, Object> record, String... key) throws SQLException {
+                
+        TableRecordSQLBuilder b = new TableRecordSQLBuilder (t, record, Arrays.asList (key));
+        
+        if (b.getNonKeyCols ().isEmpty ()) throw new IllegalArgumentException ("Nothing to update in " + t.getName () + ": " + record);
+        
         genUpdateSql (b);
-        d0 (b); 
+        
+        d0 (b);
+        
     }
     
     /**
@@ -551,10 +613,11 @@ public abstract class DB implements AutoCloseable, ParamSetter {
      *
      * @param c Класс с описанием таблицы
      * @param record Обновляемая запись. Первичный ключ должен быть задан.
+     * @param key Список имён столбцов, составляющих ключ для поиска. Если пуст, используется первичный ключ таблицы.
      * @throws SQLException
      */
-    public final void update (Class c, Map <String, Object> record) throws SQLException {
-        update (model.get (c), record);
+    public final void update (Class c, Map <String, Object> record, String... key) throws SQLException {
+        update (model.get (c), record, key);
     }    
     
     /**
@@ -699,7 +762,7 @@ public abstract class DB implements AutoCloseable, ParamSetter {
     }
                 
     private final TableRecordSQLBuilder createInsertSQLBuilder (Table t, Map<String, Object> r) throws SQLException {
-        TableRecordSQLBuilder b = new TableRecordSQLBuilder (t, r);
+        TableRecordSQLBuilder b = new TableRecordSQLBuilder (t, r, null);
         genInsertSql (b);
         return b;
     }    
@@ -723,16 +786,18 @@ public abstract class DB implements AutoCloseable, ParamSetter {
      * @throws SQLException
      */
     public final Object insertId (Table t, Map<String, Object> r) throws SQLException {
-                
-        String [] pkColNames = t.getPkColNames ();
         
-        if (pkColNames.length != 1) throw new IllegalArgumentException ("Vector PKs are not supported");
+        List<Col> pk = t.getPk ();
                 
-        r.remove (pkColNames [0]);
+        if (pk.size () != 1) throw new IllegalArgumentException ("Vector PKs are not supported");
+        
+        final String pkColName = pk.get (0).getName ();
+
+        r.remove (pkColName);
                 
         TableRecordSQLBuilder b = createInsertSQLBuilder (t, r);
         
-        try (PreparedStatement st = cn.prepareStatement (b.getSQL (), pkColNames)) {
+        try (PreparedStatement st = cn.prepareStatement (b.getSQL (), new String [] {pkColName})) {
             
             b.setParams (st, this);
             
@@ -1290,6 +1355,37 @@ public abstract class DB implements AutoCloseable, ParamSetter {
     }
         
     /**
+     * Извлечение выборки по запросу в виде списка
+     * @param qp запрос
+     * @return List записей, полученных как HASH
+     * @throws SQLException
+     */
+    
+    public final List <Map <String, Object>> getList (QP qp) throws SQLException {
+        
+        List <Map <String, Object>> result = new ArrayList<> ();
+        
+        forEach (qp, rs -> {
+            Map<String, Object> r = HASH (rs);
+            result.add (r);
+        });
+                
+        return result;
+        
+    }
+
+    /**
+     * Извлечение выборки по запросу в виде списка
+     * @param select запрос
+     * @return List записей, полученных как HASH
+     * @throws SQLException
+     */
+    
+    public final List <Map <String, Object>> getList (Select select) throws SQLException {
+        return getList (toQP (select));
+    }
+    
+    /**
      * Извлечение выборки по запросу в виде индекса: ключ-запись
      * @param s запрос
      * @param key имя ключевого поля (если null — используется имя 1-го поля PK главной таблицы запроса)
@@ -1359,7 +1455,7 @@ public abstract class DB implements AutoCloseable, ParamSetter {
     public abstract void updateSchema () throws SQLException;
 
     protected abstract String toVarbinary (Object v);
-    protected abstract void genUpsertSql (TableSQLBuilder b, Roster<PhysicalCol> keyCols);
+    protected abstract void genUpsertSql (TableSQLBuilder b);
     protected abstract void genInsertSql (TableSQLBuilder b);
     protected abstract void genUpdateSql (TableSQLBuilder b);
     protected abstract SQLBuilder genUpsertSql (Table t, Table records, String[] key);
@@ -1584,16 +1680,16 @@ public abstract class DB implements AutoCloseable, ParamSetter {
         
         String [] key;
 
-        public UpsertBuffer (Table t, int size, String [] key) {
+        public UpsertBuffer (Table t, int size, String... key) {
             super (t, size);
             this.key = key;
         }
         
-        public UpsertBuffer (String t, int size, String [] key) {
+        public UpsertBuffer (String t, int size, String... key) {
             this (model.get (t), size, key);
         }
         
-        public UpsertBuffer (Class t, int size, String [] key) {
+        public UpsertBuffer (Class t, int size, String... key) {
             this (model.get (t), size, key);
         }
                 
@@ -1631,13 +1727,23 @@ public abstract class DB implements AutoCloseable, ParamSetter {
         String [] key;
         int cnt;
 
-        public TableUpsertBuffer (Table t, int size, Table tb, int tbSize, String [] key) throws SQLException {
+        public TableUpsertBuffer (Table t, int size, Table tb, int tbSize, String... key) throws SQLException {
             super (t, size);
             if (tbSize < size) throw new IllegalArgumentException ("tbSize (" + tbSize +  ") cannot be less than size: " + size);
             this.tbSize = tbSize;
             this.tb = tb;
+            
+            if (key.length == 0) {
+                List<Col> pk = tb.getPk ();
+                final int len = pk.size ();
+                key = new String [len];
+                for (int i = 0; i < len; i++) key [i] = pk.get (i).getName ();
+            }
+            
             this.key = key;
+            
             clearBufferTable ();
+            
         }
 
         /**
@@ -1648,7 +1754,7 @@ public abstract class DB implements AutoCloseable, ParamSetter {
          * @param tbSize Максимальное число записей в tb
          * @param key Ключ синхронизации. Если пусто, используется первичный ключ tb
          */
-        public TableUpsertBuffer (Class t, int size, Class tb, int tbSize, String [] key) throws SQLException {
+        public TableUpsertBuffer (Class t, int size, Class tb, int tbSize, String... key) throws SQLException {
             this (model.get (t), size, model.get (tb), tbSize, key);
         }
 
@@ -1680,5 +1786,7 @@ public abstract class DB implements AutoCloseable, ParamSetter {
     public abstract QP toLimitedQP (QP qp, int offset, Integer limit);
     public abstract PhysicalCol toPhysical (Col col);
     public abstract void adjustTable (Table t);
+    public abstract TypeAction getTypeAction (JDBCType asIs, JDBCType toBe);
+    public abstract boolean equalDef (PhysicalCol asIs, PhysicalCol toBe);
 
 }

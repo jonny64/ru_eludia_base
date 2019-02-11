@@ -1,7 +1,10 @@
 package ru.eludia.base.model.abs;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import ru.eludia.base.model.ColEnum;
 import ru.eludia.base.model.Trigger;
 
 public abstract class AbstractTable<C extends AbstractCol, K extends AbstractKey> extends NamedObject {
@@ -31,6 +34,10 @@ public abstract class AbstractTable<C extends AbstractCol, K extends AbstractKey
         super (name, remark);
     }
     
+    public C getColumn (ColEnum c) {
+        return columns.get (c.lc ());
+    }
+    
     public C getColumn (String name) {
         return columns.get (name);
     }
@@ -38,19 +45,39 @@ public abstract class AbstractTable<C extends AbstractCol, K extends AbstractKey
     public List<C> getPk () {
         return pk;
     }
+
+    public Collection<String> getKeyColNames () {
+        return keyColNames;
+    }
     
-    public String [] getPkColNames () {
-        final int size = pk.size ();
-        String [] result = new String [size];
-        for (int i = 0; i < size; i++) result [i] = pk.get (i).getName ();
-        return result;
+    Collection<String> keyColNames = Collections.EMPTY_LIST;
+    
+    public final void pk (ColEnum c, String... aliases) {
+        final C column = getColumn (c);
+        if (column == null) throw new IllegalArgumentException ("Column " + c + " not found in " + this.getName () + ". Existing column names are " + getColumns ().keySet ());
+        pk (column, aliases);
     }
     
     public final void pk (C c, String... aliases) {
-        add (c, aliases);
+        
+        if (!columns.containsKey (c.getName ())) add (c, aliases);
+        
         if (pk == null) pk = new ArrayList<> (1);
-        c.setPkPos (pk.size ());
+        
         pk.add (c);
+        
+        final String name = c.getName ();
+        
+        switch (pk.size ()) {
+            case 1:
+                keyColNames = Collections.singletonList (name);
+                break;
+            case 2:
+                keyColNames = new ArrayList<> (keyColNames);
+            default:
+                keyColNames.add (name);
+        }
+        
     }
     
     public final void add (C c, String... aliases) {
