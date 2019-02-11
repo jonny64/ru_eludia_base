@@ -3,6 +3,7 @@ package ru.eludia.base.db.sql.gen;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import ru.eludia.base.model.ColEnum;
 import ru.eludia.base.model.Table;
 
 /**
@@ -55,6 +56,10 @@ public class Select extends Part<Select> {
         return joins;
     }
 
+    public final Select orderBy (ColEnum col) {
+        return orderBy (col.lc ());
+    }
+
     /**
      * Установка ORDER BY либо приписывание дополнительного 
      * поля в конец списка
@@ -95,10 +100,10 @@ public class Select extends Part<Select> {
         joins.add (join);
     }
     
-    Part getPart (String name) {
+    public Part getPart (String name) {
         if (name == null || name.isEmpty ()) return this;
         for (Join j: joins) if (name.equals (j.getTableAlias ())) return j;
-        throw new IllegalArgumentException ("Part not found by name: " + name);
+        return null;
     }
 
     /**

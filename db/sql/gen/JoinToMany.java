@@ -64,6 +64,8 @@ public final class JoinToMany extends Join {
                 select.getPart (rt [1]) : 
                 getPartByTable (pr.getRef ().getTargetTable ());
         
+        if (toPart == null) throw new IllegalArgumentException ("No part for '" + rt[1] + "' found");
+        
         joinCondition = new JoinConditionByRef (pr, toPart);
                         
         return select;
