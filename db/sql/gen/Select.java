@@ -100,10 +100,10 @@ public class Select extends Part<Select> {
         joins.add (join);
     }
     
-    Part getPart (String name) {
+    public Part getPart (String name) {
         if (name == null || name.isEmpty ()) return this;
         for (Join j: joins) if (name.equals (j.getTableAlias ())) return j;
-        throw new IllegalArgumentException ("Part not found by name: " + name);
+        return null;
     }
 
     /**
