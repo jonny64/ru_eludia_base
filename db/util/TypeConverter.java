@@ -9,6 +9,9 @@ import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -448,6 +451,12 @@ public class TypeConverter {
                         || Float.class.equals(type)
                         || BigDecimal.class.equals(type)) {
                         writeMethod.invoke(javaBean, type.getMethod("valueOf", String.class).invoke(value, value.toString()));
+                } else if (LocalDate.class.equals(type)){
+                    writeMethod.invoke (javaBean, LocalDate.parse(value.toString().substring(0, 10)));
+                } else if (LocalDateTime.class.equals(type)){
+                    writeMethod.invoke (javaBean, LocalDateTime.parse(value.toString().replace (' ', 'T')));
+                } else if (LocalTime.class.equals(type)){
+                    writeMethod.invoke (javaBean, LocalTime.parse(value.toString().substring(11)));
                 }
                 else {
                     logger.warning ("javaBean property setting not supported for " + type.getName ());
