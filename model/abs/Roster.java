@@ -45,4 +45,10 @@ public final class Roster<T extends NamedObject> extends ConcurrentHashMap<Strin
         for (String alias: a) alias (key, alias);
     }
 
+    public void remove (String key) {
+        super.remove (key); 
+        aliases.remove (key);
+        aliases.remove (toCanonical (key));
+    }
+
 }
