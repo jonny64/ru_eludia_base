@@ -402,19 +402,25 @@ public class TypeConverter {
                 final Method writeMethod = pd.getWriteMethod ();
 
                 if (writeMethod == null) {
-                    final Method readMethod = pd.getReadMethod();
-                    if (!List.class.equals(readMethod.getReturnType())) continue;
-                    
-                    List list = (List)readMethod.invoke(javaBean);
-                    list.addAll((List)value);
-                    
+
+                    final Method readMethod = pd.getReadMethod ();
+
+                    if (!List.class.equals (readMethod.getReturnType ())) continue;
+
+                    if (!(value instanceof List)) continue;
+
+                    List list = (List)readMethod.invoke (javaBean);
+
+                    list.addAll ((List) value);
+
                     continue;
+
                 }
 
                 Class<?> type = writeMethod.getParameterTypes () [0];
-                
+                                
                 if (type.isPrimitive())
-                    type = (Class)primitiveWrapperMap.get(type);
+                    type = (Class)primitiveWrapperMap.get(type);                
                 
                 if (String.class.equals (type)) {
                     final String s = value.toString ();
