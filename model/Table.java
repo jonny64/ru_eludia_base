@@ -73,6 +73,11 @@ public abstract class Table extends AbstractTable<Col, Key> {
         add (new Key (name, parts));
     }
     
+    protected final void key (ColEnum col) {
+        String lc = col.lc ();
+        key (lc, lc);
+    }
+    
     protected final void unique (String name, Object... parts) {
         Key key = new Key (name, parts);
         key.setUnique (true);
