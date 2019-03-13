@@ -214,6 +214,45 @@ public class TypeConverter {
         return job;
         
     }
+        
+    /**
+     * Преобразует объект JSON в соответствующий Map со строковыми ключами,
+     * пригодный для db.insert, db.update и т. п. вызовов.
+     * Ключи приводятся к нижнему регистру. Логические значения заменяются на 0/1.
+     * @param o объект JSON
+     * @return те же данные в виде Map<String, Object>
+     */
+    public final static Map<String, Object> Map (JsonObject o) {
+        
+        Map<java.lang.String, Object> hash = DB.HASH ();
+               
+        o.entrySet ().forEach (kv -> {
+            
+            java.lang.String key = kv.getKey ().toLowerCase ();
+            JsonValue value = kv.getValue ();                        
+            
+            if (value == JsonValue.NULL) {
+                hash.put (key, null);
+            }
+            if (value == JsonValue.TRUE) {
+                hash.put (key, 1);
+            }
+            else if (value == JsonValue.FALSE) {
+                hash.put (key, 0);
+            }
+            else if (value instanceof JsonString) {
+                hash.put (key, ((JsonString) value).getString ());
+            }
+            else if (value instanceof JsonNumber) {
+                hash.put (key, ((JsonNumber) value).bigDecimalValue ());
+            }
+
+        });
+        
+        return hash;
+        
+    }
+    
     
     /**
      * Конструктор UUID из HEX-строки без разделителей
