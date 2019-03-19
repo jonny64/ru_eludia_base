@@ -5,6 +5,7 @@ import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.io.InputStream;
 import java.io.StringReader;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -252,6 +253,38 @@ public class TypeConverter {
         return hash;
         
     }
+    
+    /**
+     * Преобразует объект в соответствующий Map со строковыми ключами
+     * Ключи приводятся к нижнему регистру.
+     * @param o объект
+     * @return те же данные в виде Map<String, Object>
+     */
+    public final static Map<String, Object> Map(Object o) {
+
+		Map<String, Object> hash = new HashMap<>();
+
+		if (o == null)
+			return hash;
+
+		try {
+			Class<?> clazz = o.getClass();
+			while (clazz != null) {
+				for (Field field : clazz.getDeclaredFields()) {
+					if (!field.isAccessible()) {
+						field.setAccessible(true);
+					}
+					hash.put(field.getName().toLowerCase(), field.get(o));
+				}
+				clazz = clazz.getSuperclass();
+			}
+		} catch (Exception ex) {
+			throw new IllegalStateException(ex);
+		}
+
+		return hash;
+
+	}
     
     
     /**
