@@ -836,9 +836,11 @@ public final class Oracle extends ANSI {
             PhysicalModel ex = getExistingModel ();
             
             for (String name: fixedViewNames) {
-                
+
                 View viewToBe = (View) getModel ().get (name);
                 
+                if (viewToBe == null) continue;
+
                 for (Col col: viewToBe.getColumns ().values ())
                     
                     if (!DB.eq (col.getRemark (), ex.getRemark (col)))
