@@ -334,6 +334,46 @@ public abstract class DB implements AutoCloseable, ParamSetter {
         d0 (b);        
         
     }
+        
+    /**
+     * Синхронизация отдельной записи данных по заданному ключу 
+     * с выдачей первичного ключа соответствующей записи.
+     * Первичный ключ должен состоять из одного поля.
+     * @param t Описание таблицы
+     * @param record Хэш со значениями полей. Ключевые должны быть указаны, остальные -- не обязательно.
+     * @param key Список имён полей, составляющих ключ синхронизации. Может быть null или пустым -- тогда используется первичный ключ.
+     * @return значение первичного ключа созданной/обновлённой записи
+     * @throws SQLException
+     */    
+    
+    public final String upsertId (Table t, Map <String, Object> record, String... key) throws SQLException {
+
+        upsert (t, record, key);
+        
+        Select select = model.select (t, t.getPk ().get (0).getName ());
+        for (String k: key) select.and (k, record.get (k));
+        
+        return getString (select);
+        
+    }    
+    
+    
+    /**
+     * Синхронизация отдельной записи данных по заданному ключу 
+     * с выдачей первичного ключа соответствующей записи.
+     * Первичный ключ должен состоять из одного поля.
+     * @param c Описание таблицы
+     * @param record Хэш со значениями полей. Ключевые должны быть указаны, остальные -- не обязательно.
+     * @param key Список имён полей, составляющих ключ синхронизации. Может быть null или пустым -- тогда используется первичный ключ.
+     * @return значение первичного ключа созданной/обновлённой записи
+     * @throws SQLException
+     */    
+    
+    public final String upsertId (Class c, Map <String, Object> record, String... key) throws SQLException {
+
+        return upsertId (model.get (c), record, key);
+        
+    }    
 
     /**
      * Синхронизация пакета записей по заданному ключу БЕЗ УДАЛЕНИЯ.
