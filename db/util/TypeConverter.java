@@ -578,7 +578,8 @@ public class TypeConverter {
         if (o instanceof Map) {
             final JsonObjectBuilder ob = Json.createObjectBuilder ();
             final Map m = (Map) o;
-            m.keySet ().stream ().sorted ().forEach ((k) -> {
+            if (m.containsKey (null)) ob.add ("null", json (m.get (null)));
+            m.keySet ().stream ().filter (t -> t != null).sorted ().forEach ((k) -> {
                 ob.add (k.toString (), json (m.get (k)));
             });
             return ob.build ();
