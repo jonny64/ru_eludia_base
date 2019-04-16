@@ -107,15 +107,58 @@ public abstract class ANSI extends DB {
                 break;
                 
             default: 
+
                 String s = value.toString ();
-                if (length > 0 && s.length () > length) {
-                    logger.info ("Truncating '" + s + "' to first " + length + " chars");
-                    s = s.substring (0, length);
+
+                if (length > 0 && utf8longer (s, length)) {
+
+                    logger.info ("Truncating '" + s + "' to first " + length + " UTF8 bytes");
+
+                    s = utf8trunc (s, length);
+
                 }
+
                 st.setString (n, s);
-        
+
         }
-        
+
+    }
+
+    private static final boolean utf8longer (String s, int max) {
+
+        int len = 0;
+
+        for (int i = 0; i < s.length (); i ++) {
+            len += utf8len (s.charAt (i));
+            if (len > max) return true;
+        }
+
+        return false;
+
+    }
+
+    private static final String utf8trunc (String s, int max) {
+
+        int len = 0;
+        StringBuilder sb = new StringBuilder ();
+
+        for (int i = 0; i < s.length (); i ++) {
+            final char ch = s.charAt (i);
+            int nxt = len + utf8len (ch);
+            if (nxt > max) break;
+            sb.append (ch);
+            len = nxt;
+        }
+
+        return sb.toString ();
+
+    }
+
+    private static final int utf8len (char ch) {
+        if (ch <= 0x7F) return 1;
+        if (ch <= 0x7FF) return 2;
+//        if (Character.isHighSurrogate(ch)) return 4;
+        return 3;        
     }
     
     protected void setNullParam (PreparedStatement st, int n, JDBCType type) throws SQLException {
