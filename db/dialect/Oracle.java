@@ -1,5 +1,6 @@
 package ru.eludia.base.db.dialect;
 
+import java.math.BigDecimal;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
@@ -81,11 +82,11 @@ public final class Oracle extends ANSI {
                 Timestamp ts = rs.getTimestamp (n);
                 return rs.wasNull () ? null : ts.toString ();
             case NUMERIC:
-                Object num = 
-                    md.getScale (n)     > 0  ? rs.getBigDecimal (n) : 
-                    md.getPrecision (n) > 18 ? rs.getBigDecimal (n) : 
-                                               rs.getLong (n);
-                return rs.wasNull () ? null : num;
+                BigDecimal bd = rs.getBigDecimal (n);
+                if (rs.wasNull ()) return null;
+                if (bd.scale () > 0) return bd;
+                if (bd.precision () > 18) return bd;
+                return bd.longValue ();
             case CLOB:
             case VARCHAR:
                 String s = rs.getString (n);
