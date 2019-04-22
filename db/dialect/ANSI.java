@@ -713,6 +713,28 @@ public abstract class ANSI extends DB {
 
         for (Col toBe: cols) if (!toBe.toPhysical ().isVirtual ()) update (oldTable, newTable, toBe, newRefs);
         for (Col toBe: cols) if ( toBe.toPhysical ().isVirtual ()) update (oldTable, newTable, toBe, newRefs);
+        
+        for (PhysicalCol c: oldTable.getColumns ().values ()) {
+                        
+            if (newTable.getColumns ().containsKey (c.getName ())) continue;
+            
+            if (c.isNullable ()) {
+                logger.log (Level.WARNING, "Unknown column detected: " + oldTable.getName () + "." + c.getName ()+ ". Better declare or drop it out!");
+            }
+            else {
+                
+                logger.log (Level.WARNING, "Unknown NOT NULL column detected: " + oldTable.getName () + "." + c.getName () + ". Will try to set it NULLable. In any case, better declare or drop it out.");
+
+                try {
+                    adjustNullability (newTable, c, NullAction.SET);
+                }
+                catch (Exception ex) {
+                    logger.log (Level.WARNING, "Failed to make unknown column nullable", ex);
+                }
+
+            }
+            
+        }
                     
         if (!oldTable.getRemark ().equals (newTable.getRemark ())) comment (newTable);
         
