@@ -521,13 +521,15 @@ public class TypeConverter {
                 else if (BigInteger.class.equals(type)) {
                         writeMethod.invoke (javaBean, new BigInteger (value.toString ()));
                 }
+                else if (BigDecimal.class.equals(type)) {
+                        writeMethod.invoke (javaBean, new BigDecimal (value.toString ()));
+                }
                 else if (Byte.class.equals(type)
                         || Short.class.equals(type)
                         || Integer.class.equals(type)
                         || Long.class.equals(type)
                         || Double.class.equals(type)
-                        || Float.class.equals(type)
-                        || BigDecimal.class.equals(type)) {
+                        || Float.class.equals(type)) {
                         writeMethod.invoke(javaBean, type.getMethod("valueOf", String.class).invoke(value, value.toString()));
                 } else if (LocalDate.class.equals(type)){
                     writeMethod.invoke (javaBean, LocalDate.parse(value.toString().substring(0, 10)));
@@ -546,6 +548,7 @@ public class TypeConverter {
             
         }
         catch (Exception ex) {
+ex.printStackTrace ();
             throw new IllegalStateException (ex);
         }
                 
