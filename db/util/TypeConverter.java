@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.json.Json;
@@ -380,9 +381,25 @@ public class TypeConverter {
         
         if (v instanceof XMLGregorianCalendar) return new Timestamp (((XMLGregorianCalendar) v).toGregorianCalendar ().getTimeInMillis ());
         if (v instanceof java.util.Date) return new Timestamp (((java.util.Date) v).getTime ());
-        
-        String s = v.toString ().replace ("+03:00", "");
 
+        String s = v.toString ();        
+        
+        int len = s.length ();
+        
+        if (len < 10) throw new IllegalArgumentException ("Invalid date: '" + s + "'");
+        
+        if (s.charAt (len - 1) == 'Z') {
+            s = s.substring (0, len - 1);
+        }
+        else {
+            switch (s.charAt (len - 6)) {
+                case '+':
+                case '-':
+                    s = s.substring (0, len - 6);
+                break;
+            }
+        }
+    
         if (s.length () < 10) throw new IllegalArgumentException ("Invalid date: '" + s + "'");
         
         if (s.length () == 10) {
