@@ -13,7 +13,6 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.GregorianCalendar;
@@ -22,7 +21,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Logger;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.json.Json;
@@ -391,7 +389,7 @@ public class TypeConverter {
         if (s.charAt (len - 1) == 'Z') {
             s = s.substring (0, len - 1);
         }
-        else {
+        else if (s.charAt (len - 3) == ':') {
             switch (s.charAt (len - 6)) {
                 case '+':
                 case '-':
