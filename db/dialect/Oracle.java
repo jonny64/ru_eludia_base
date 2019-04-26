@@ -84,6 +84,7 @@ public final class Oracle extends ANSI {
             case NUMERIC:
                 BigDecimal bd = rs.getBigDecimal (n);
                 if (rs.wasNull ()) return null;
+                if (md.getScale (n) > 0) return bd;
                 if (bd.scale () > 0) return bd;
                 if (bd.precision () > 18) return bd;
                 return bd.longValue ();
