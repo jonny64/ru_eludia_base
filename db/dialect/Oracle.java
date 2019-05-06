@@ -322,6 +322,7 @@ public final class Oracle extends ANSI {
         
         PhysicalCol tmp = new PhysicalCol (col.getType (), "tmp_" + System.currentTimeMillis (), col.getLength (), col.getPrecision ());
         tmp.setDef (col.getDef ());
+        tmp.setNullable (col.isNullable ());
         
         create (table, tmp);
         
