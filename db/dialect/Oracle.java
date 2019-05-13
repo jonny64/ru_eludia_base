@@ -258,6 +258,18 @@ public final class Oracle extends ANSI {
         return qp;
         
     }    
+    
+    @Override    
+    protected final QP genDropRefSql (PhysicalTable t, PhysicalCol c) throws SQLException {
+                        
+        QP qp = new QP ("ALTER TABLE ");
+        qp.append (t.getName ());
+        qp.append (" DROP CONSTRAINT ");
+        qp.append (c.getFk ());
+        
+        return qp;
+        
+    }    
 
     @Override
     public TypeAction getTypeAction (JDBCType asIs, JDBCType toBe) {
@@ -478,6 +490,21 @@ public final class Oracle extends ANSI {
             
         }
         
+        forEach (new QP ("SELECT a.constraint_name fk, a.table_name, a.column_name, c_pk.table_name ref FROM user_cons_columns a INNER JOIN user_constraints c ON a.constraint_name = c.constraint_name INNER JOIN user_constraints c_pk ON c.r_constraint_name = c_pk.constraint_name WHERE c.constraint_type = 'R'"), rs -> {
+            
+            PhysicalTable t = m.get (rs.getString ("TABLE_NAME"));
+            
+            if (t == null) return;
+            
+            PhysicalCol c = t.getColumn (rs.getString ("COLUMN_NAME"));
+            
+            if (c == null) return;
+            
+            c.setRef (rs.getString ("REF"));
+            c.setFk  (rs.getString ("FK"));
+
+        });
+
         forEach (new QP ("SELECT * FROM user_col_comments"), rs -> {
             
             PhysicalTable t = m.get (rs.getString ("TABLE_NAME"));

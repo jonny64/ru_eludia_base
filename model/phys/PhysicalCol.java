@@ -11,6 +11,8 @@ public final class PhysicalCol extends AbstractCol {
     
     JDBCType type;    
     String def;
+    String ref = null;
+    String fk = null;
     boolean virtual = false;
 
     public PhysicalCol (ResultSet rs) throws SQLException {
@@ -29,6 +31,22 @@ public final class PhysicalCol extends AbstractCol {
         this.virtual = virtual;
     }
 
+    public void setFk (String fk) {
+        this.fk = fk;
+    }
+
+    public String getRef () {
+        return ref;
+    }
+
+    public String getFk () {
+        return fk;
+    }
+
+    public boolean isRef () {
+        return ref != null;
+    }
+    
     public boolean isVirtual () {
         return virtual;
     }
@@ -56,6 +74,10 @@ public final class PhysicalCol extends AbstractCol {
 
     public void setDef (String def) {
         this.def = def;
+    }    
+    
+    public void setRef (String ref) {
+        this.ref = ref;
     }    
 
     @Override

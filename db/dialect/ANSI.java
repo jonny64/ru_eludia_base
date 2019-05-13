@@ -680,6 +680,18 @@ public abstract class ANSI extends DB {
         d0 (qp);
                 
     }
+    
+    protected void dropRef (PhysicalTable t, PhysicalCol c) throws SQLException {
+        
+        final QP qp = genDropRefSql (t, c);
+        
+        if (qp == null) return;
+
+        logger.fine ("Dropping FK for " + t.getName () + '.' + c.getName ());
+        
+        d0 (qp);
+                
+    }
 
     protected void alter (Table table, PhysicalCol col) throws SQLException {
         
@@ -699,13 +711,29 @@ public abstract class ANSI extends DB {
             
             if (toBe instanceof Ref) newRefs.add ((Ref) toBe);
             
-        } else {
+        } 
+        else {
 
             update (newTable, asIs, toBe.toPhysical ());
 
+            if (toBe instanceof Ref) {
+                
+                Ref refToBe = (Ref) toBe;
+                
+                final String oldRef = DB.to.String (asIs.getRef ()).toLowerCase ();
+                final String newRef = refToBe.getTargetTable ().getName ().toLowerCase ();
+                
+                if (!DB.eq (oldRef, newRef)) {
+                    logger.warning (newTable.getName () + "." + toBe.getName () + ": ref changed from " + oldRef + " to " + newRef);
+                    if (asIs.isRef ()) dropRef (oldTable, asIs);
+                    newRefs.add ((Ref) toBe);
+                }
+                
+            }            
+
         }
 
-    }    
+    }
 
     private void update (PhysicalTable oldTable, Table newTable, List<Ref> newRefs) throws SQLException {
 
@@ -984,6 +1012,7 @@ public abstract class ANSI extends DB {
     protected abstract QP genCreateSql (Table table, PhysicalKey key) throws SQLException;
     protected abstract QP genDropSql (Table table, PhysicalKey key) throws SQLException;
     protected abstract QP genCreateSql (Ref ref) throws SQLException;
+    protected abstract QP genDropRefSql (PhysicalTable t, PhysicalCol r) throws SQLException;
     protected abstract QP genAlterSql  (Table table, PhysicalCol col) throws SQLException;
     protected abstract QP genNullableSql (Table table, PhysicalCol col, String nn) throws SQLException;
     protected abstract void comment (Table table) throws SQLException;
