@@ -2,12 +2,15 @@ package ru.eludia.base.model;
 
 import java.math.BigInteger;
 import java.math.BigDecimal;
+import java.sql.SQLException;
 import java.util.Calendar;
 import java.util.Random;
 import java.util.UUID;
 import java.util.function.Supplier;
 import javax.json.Json;
 import javax.json.JsonObjectBuilder;
+import ru.eludia.base.DB;
+import ru.eludia.base.db.util.JDBCConsumer;
 import ru.eludia.base.model.abs.AbstractCol;
 import ru.eludia.base.model.def.Def;
 import ru.eludia.base.model.def.Null;
@@ -19,6 +22,16 @@ public class Col extends AbstractCol implements Cloneable {
     Def def = null;
     Table table;
     PhysicalCol physicalCol;
+    JDBCConsumer<DB> afterAdd = null;
+    
+    public void onAfterAdd (JDBCConsumer<DB> afterAdd) {
+        this.afterAdd = afterAdd;
+    }
+    
+    public void doAfterAdd (DB db) throws SQLException {
+        if (afterAdd == null) return;
+        afterAdd.accept (db);
+    }
     
     public void setTable (Table table) {
         this.table = table;

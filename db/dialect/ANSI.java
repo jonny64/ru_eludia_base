@@ -709,6 +709,8 @@ public abstract class ANSI extends DB {
             
             create (newTable, toBe.toPhysical ());
             
+            toBe.doAfterAdd (this);
+                        
             if (toBe instanceof Ref) newRefs.add ((Ref) toBe);
             
         } 
