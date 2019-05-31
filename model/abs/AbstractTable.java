@@ -12,6 +12,7 @@ public abstract class AbstractTable<C extends AbstractCol, K extends AbstractKey
     protected Roster<C> columns        = new Roster<> ();
     protected Roster<K> keys           = new Roster<> ();
     protected Roster<Trigger> triggers = new Roster<> ();
+//    protected Roster<Procedure> procedures = new Roster<> ();
     List<C> pk = null;
 
     public final Roster<C> getColumns () {
