@@ -45,6 +45,7 @@ import ru.eludia.base.db.sql.gen.Part;
 import ru.eludia.base.db.sql.gen.Predicate;
 import ru.eludia.base.db.sql.gen.ResultCol;
 import ru.eludia.base.db.sql.gen.Select;
+import ru.eludia.base.model.Procedure;
 import ru.eludia.base.model.phys.PhysicalView;
 
 public abstract class ANSI extends DB {
@@ -935,6 +936,12 @@ public abstract class ANSI extends DB {
         
         for (Table toBe: tables) {
             
+            for (Procedure p: toBe.getProcedures ().values ()) update (p);
+            
+        }        
+        
+        for (Table toBe: tables) {
+            
             if (toBe.getTriggers ().isEmpty ()) continue;
 
             PhysicalTable asIs = ex.get (toBe.getName ());            
@@ -962,7 +969,7 @@ public abstract class ANSI extends DB {
             }
         
         }
-
+        
         checkModel ();
 
     }   
@@ -1024,5 +1031,6 @@ public abstract class ANSI extends DB {
     protected abstract void update (View view) throws SQLException;
     protected abstract void update (Table table, Trigger trg) throws SQLException;
     protected abstract void addIndexes (PhysicalModel m) throws SQLException;
+    protected abstract void update (Procedure p) throws SQLException;
     
 }

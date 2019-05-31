@@ -13,7 +13,7 @@ import java.util.Map;
 import javax.json.JsonObject;
 import ru.eludia.base.DB;
 import ru.eludia.base.db.dialect.Oracle;
-import ru.eludia.base.model.def.Def;
+import ru.eludia.base.model.abs.Roster;
 
 public abstract class Table extends AbstractTable<Col, Key> {
     
@@ -97,6 +97,20 @@ public abstract class Table extends AbstractTable<Col, Key> {
     protected final void trigger (String when, String what) {
         Trigger trg = new Trigger (when, what);
         triggers.add (trg);
+    }
+
+    public Roster<Procedure> getProcedures () {
+        return procedures;
+    }
+    
+    protected final void procedure (String name, String params, String body) {
+        Procedure procedure = new Procedure (name, params, body);
+        procedures.add (procedure);
+    }
+    
+    protected final void procedure (String name, String body) {
+        Procedure procedure = new Procedure (name, body);
+        procedures.add (procedure);
     }
     
     protected final void cols (Class clazz) {                

@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import ru.eludia.base.model.ColEnum;
+import ru.eludia.base.model.Procedure;
 import ru.eludia.base.model.Trigger;
 
 public abstract class AbstractTable<C extends AbstractCol, K extends AbstractKey> extends NamedObject {
@@ -12,7 +13,7 @@ public abstract class AbstractTable<C extends AbstractCol, K extends AbstractKey
     protected Roster<C> columns        = new Roster<> ();
     protected Roster<K> keys           = new Roster<> ();
     protected Roster<Trigger> triggers = new Roster<> ();
-//    protected Roster<Procedure> procedures = new Roster<> ();
+    protected Roster<Procedure> procedures = new Roster<> ();
     List<C> pk = null;
 
     public final Roster<C> getColumns () {

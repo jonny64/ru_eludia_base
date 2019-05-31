@@ -21,7 +21,6 @@ import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 import ru.eludia.base.DB;
 import ru.eludia.base.db.sql.build.QP;
 import ru.eludia.base.db.sql.build.TableSQLBuilder;
@@ -34,7 +33,6 @@ import ru.eludia.base.model.phys.PhysicalKey;
 import ru.eludia.base.model.phys.PhysicalKeyPart;
 import ru.eludia.base.model.phys.PhysicalTable;
 import ru.eludia.base.model.Ref;
-import ru.eludia.base.model.abs.Roster;
 import ru.eludia.base.model.Table;
 import ru.eludia.base.model.Trigger;
 import ru.eludia.base.model.Type;
@@ -44,6 +42,7 @@ import ru.eludia.base.model.def.Def;
 import ru.eludia.base.model.diff.TypeAction;
 import ru.eludia.base.model.phys.PhysicalModel;
 import ru.eludia.base.db.sql.build.SQLBuilder;
+import ru.eludia.base.model.Procedure;
 import static ru.eludia.base.model.def.Blob.EMPTY_BLOB;
 import ru.eludia.base.model.phys.PhysicalView;
 
@@ -723,6 +722,26 @@ public final class Oracle extends ANSI {
         if (name.length () > 30) name = "tr_" + to.hex (md5.digest (name.getBytes ())).substring (0, 27);
 
         d0 ("CREATE OR REPLACE TRIGGER " + name + " " + trg.getWhen () + " ON " + table.getName () + " FOR EACH ROW " + trg.getWhat ());
+
+    }
+    
+    @Override
+    protected void update (Procedure p) throws SQLException {
+        
+        StringBuilder sb = new StringBuilder ("CREATE OR REPLACE PROCEDURE ");
+        
+        sb.append (p.getName ());
+        
+        if (ok (p.getParams ())) {
+            sb.append (" (");
+            sb.append (p.getParams ());
+            sb.append (')');
+        }
+        
+        sb.append (" AS ");
+        sb.append (p.getBody ());
+        
+        d0 (sb.toString ());
 
     }
     
