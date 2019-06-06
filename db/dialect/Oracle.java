@@ -89,6 +89,7 @@ public final class Oracle extends ANSI {
                 return bd.longValue ();
             case CLOB:
             case VARCHAR:
+	    case CHAR:
                 String s = rs.getString (n);
                 return rs.wasNull () ? "" : s;
             case VARBINARY:
