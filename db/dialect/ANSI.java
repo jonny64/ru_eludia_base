@@ -72,7 +72,7 @@ public abstract class ANSI extends DB {
             st.setShort (n, (Short) value);
         }
         else {
-            st.setBigDecimal (n, new BigDecimal (value.toString ()));
+            st.setBigDecimal (n, new BigDecimal (value.toString ().trim ()));
         }
 
     }
