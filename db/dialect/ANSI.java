@@ -581,13 +581,26 @@ public abstract class ANSI extends DB {
     private void setNotNull (Table table, PhysicalCol col) throws SQLException {
         
         if (col.getDef () == null) {
-            logger.warning ("Cannot SET NOT NULL " + table.getName () + '.' + col.getName () + ", missing DEFAULT");
-            return;
+            
+            try {
+                
+                setNullability (table, col, "NOT NULL");
+                
+            } 
+            catch (SQLException ex) {
+                
+                logger.log (Level.WARNING, "SET NOT NULL failed, probably because no default value was provided while some NULLs already exist", ex);
+                
+            }
+            
         }
-        
-        fillInNulls (table, col);
-        
-        setNullability (table, col, "NOT NULL");
+        else {
+            
+            fillInNulls (table, col);
+
+            setNullability (table, col, "NOT NULL");
+
+        }        
         
     }
 
