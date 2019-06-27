@@ -580,6 +580,8 @@ public abstract class ANSI extends DB {
 
     private void setNotNull (Table table, PhysicalCol col) throws SQLException {
         
+        table.getColumn (col.getName ()).doBeforeSetNotNull (this);
+        
         if (col.getDef () == null) {
             
             try {

@@ -23,6 +23,11 @@ public class Col extends AbstractCol implements Cloneable {
     Table table;
     PhysicalCol physicalCol;
     JDBCConsumer<DB> afterAdd = null;
+    JDBCConsumer<DB> beforeSetNotNull = null;
+    
+    public void onBeforeSetNotNull (JDBCConsumer<DB> beforeSetNotNull) {
+        this.beforeSetNotNull = beforeSetNotNull;
+    }
     
     public void onAfterAdd (JDBCConsumer<DB> afterAdd) {
         this.afterAdd = afterAdd;
@@ -31,6 +36,11 @@ public class Col extends AbstractCol implements Cloneable {
     public void doAfterAdd (DB db) throws SQLException {
         if (afterAdd == null) return;
         afterAdd.accept (db);
+    }
+    
+    public void doBeforeSetNotNull (DB db) throws SQLException {
+        if (beforeSetNotNull == null) return;
+        beforeSetNotNull.accept (db);
     }
     
     public void setTable (Table table) {
