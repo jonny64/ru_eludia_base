@@ -7,12 +7,16 @@ import java.io.InputStream;
 import java.io.StringReader;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.GregorianCalendar;
@@ -23,6 +27,7 @@ import java.util.UUID;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
 import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonArrayBuilder;
@@ -35,6 +40,7 @@ import javax.json.JsonValue;
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
 import javax.xml.datatype.XMLGregorianCalendar;
+
 import ru.eludia.base.DB;
 
 public class TypeConverter {
@@ -56,7 +62,7 @@ public class TypeConverter {
 
     }
     
-    private static final Map primitiveWrapperMap = new HashMap();
+    private static final Map<Class, Class> primitiveWrapperMap = new HashMap<>();
     static {
          primitiveWrapperMap.put(Boolean.TYPE, Boolean.class);
          primitiveWrapperMap.put(Byte.TYPE, Byte.class);
@@ -288,7 +294,7 @@ public class TypeConverter {
     
     /**
      * Конструктор UUID из HEX-строки без разделителей
-     * @param 2 Строка из 32 шестнадцатеричних цифр
+     * @param s Строка из 32 шестнадцатеричних цифр
      * @return Соответствующий UUID
      */
     public final static UUID UUIDFromHex (String s) {
@@ -349,7 +355,7 @@ public class TypeConverter {
     
     /**
      * Шестнадцатеричное представление бинарных данных
-     * @param строка, изображающая исходный массив в шестнадцатеричном представлении 
+     * @param s строка, изображающая исходный массив в шестнадцатеричном представлении
      * @return bytes массив байт (2 цифры 0-F на входе = 1 байт на выходе)
      */
     public static byte[] bytesFromHex (String s) {        
@@ -507,7 +513,7 @@ public class TypeConverter {
                 Class<?> type = writeMethod.getParameterTypes () [0];
                                 
                 if (type.isPrimitive())
-                    type = (Class)primitiveWrapperMap.get(type);                
+                    type = primitiveWrapperMap.get(type);
                 
                 if (String.class.equals (type)) {
                     final String s = value.toString ();
@@ -568,7 +574,111 @@ ex.printStackTrace ();
         }
                 
     }
-    
+
+    /**
+     * Переводит объект javaBean с типом <b>S</b> в объект javaBean c типом <b>T</b>.
+     * Копируются только параметры, наименования которых в классах совпадают
+     *
+     * @param clazz класс javaBean, экземпляр которого надо создать
+     * @param source объект javaBean, значения полей которого надо скопировать
+     * @param <T> целевой класс
+     * @param <S> класс источника данных
+     * @return javaBean с типом <b>S</b> и с требуемыми значениями полей
+     */
+    public static final <T, S> T javaBean (Class<T> clazz, S source) {
+
+        if (source == null)
+            return null;
+
+        Class sourceClass = source.getClass();
+
+        List<Field> sourceFields = new ArrayList<>();
+        while (sourceClass != null) {
+            sourceFields.addAll(Arrays.asList(sourceClass.getDeclaredFields()));
+            sourceClass = sourceClass.getSuperclass();
+        }
+
+        try {
+            T javaBean = clazz.getConstructor().newInstance();
+
+            for (Field sourceField : sourceFields) {
+                if (sourceField.getName().equals("serialVersionUID")) {
+                    continue;
+                }
+                sourceField.setAccessible(true);
+                Object value = sourceField.get(source);
+                if (value == null)
+                    continue;
+                Field targetField = getField(clazz, sourceField.getName());
+                if (targetField == null)
+                    continue;
+                if (Modifier.isFinal(targetField.getModifiers()))
+                    continue;
+
+                Class sourceFieldType = getFieldType(sourceField);
+                Class targetFieldType = getFieldType(targetField);
+
+                if (sourceFieldType.equals(targetFieldType)) {
+                    if (!(sourceField.getGenericType() instanceof ParameterizedType)) {
+                        setValue(javaBean, targetField, value);
+                        continue;
+                    }
+                    if (!(targetField.getGenericType() instanceof ParameterizedType))
+                        continue;
+                    Class<?> sourceFieldGenericType =
+                            (Class<?>) ((ParameterizedType) sourceField.getGenericType()).getActualTypeArguments()[0];
+                    Class<?> targetFieldGenericType =
+                            (Class<?>) ((ParameterizedType) targetField.getGenericType()).getActualTypeArguments()[0];
+                    if (sourceFieldGenericType.equals(targetFieldGenericType)) {
+                        setValue(javaBean, targetField, value);
+                        continue;
+                    }
+
+                    if (sourceField.getType().equals(List.class)) {
+                        List<Object> targetList = new ArrayList<>();
+                        for (Object v : (List) value) {
+                            Object targetGenericObj = javaBean(targetFieldGenericType, v);
+                            targetList.add(targetGenericObj);
+                        }
+                        setValue(javaBean, targetField, targetList);
+                    }
+                } else {
+                    Object targetFieldObj = javaBean(targetField.getType(), value);
+                    setValue(javaBean, targetField, targetFieldObj);
+                }
+            }
+
+            return javaBean;
+
+        } catch (Exception ex) {
+            ex.printStackTrace ();
+            throw new IllegalStateException (ex);
+        }
+
+    }
+
+    private static Field getField(Class clazz, String fieldName) {
+        try {
+            return clazz.getDeclaredField(fieldName);
+        } catch (NoSuchFieldException e) {
+            if (clazz.getSuperclass() != null)
+                return getField(clazz.getSuperclass(), fieldName);
+        }
+        return null;
+    }
+
+    private static <T> void setValue(T target, Field field, Object value) throws IllegalAccessException {
+        field.setAccessible(true);
+        field.set(target, value);
+    }
+
+    private static Class getFieldType(Field field) {
+        Class type = field.getType();
+        if (type.isPrimitive())
+            type = primitiveWrapperMap.get(type);
+        return type;
+    }
+
     private static JsonValue jsonNumber (Object o) {
         return Json.createArrayBuilder ().add (new BigDecimal (o.toString ())).build ().get (0);
     }
@@ -669,5 +779,5 @@ ex.printStackTrace ();
     public static Map<String, Object> HASH (JsonObject jo) {
         return (Map<String, Object>) pojo (jo);
     }    
-    
+
 }
