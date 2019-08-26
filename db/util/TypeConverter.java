@@ -335,7 +335,7 @@ public class TypeConverter {
      * @return Дата в виде, пригодном для использования в JAXB
      */
     public final static XMLGregorianCalendar XMLGregorianCalendar (String s) {
-        return dtf.newXMLGregorianCalendar (s);
+        return dtf.newXMLGregorianCalendar (s.replace (' ', 'T'));
     }
     
     /**
