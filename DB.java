@@ -1206,7 +1206,17 @@ public abstract class DB implements AutoCloseable, ParamSetter {
      * @throws SQLException
      */
     public final JsonObject getJsonObject (Select s) throws SQLException {
-        return getJsonObject (toQP (s));
+        
+        final JsonObject o = getJsonObject (toQP (s));
+        
+        JsonObjectBuilder job = Json.createObjectBuilder ();
+        
+        o.entrySet ().forEach (i -> job.add (i.getKey (), i.getValue ()));
+        
+        s.appendColumnsTo (job);
+        
+        return job.build ();
+        
     }
 
     /**

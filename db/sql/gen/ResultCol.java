@@ -1,5 +1,8 @@
 package ru.eludia.base.db.sql.gen;
 
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonObjectBuilder;
 import ru.eludia.base.model.Col;
 import ru.eludia.base.model.Table;
 import ru.eludia.base.model.phys.PhysicalCol;
@@ -67,6 +70,12 @@ public class ResultCol {
     @Override
     public String toString () {
         return "[" + col + " AS " + getAlias () + "]";
+    }
+    
+    public JsonObject getDefinition () {
+        JsonObjectBuilder job = Json.createObjectBuilder ();
+        col.getPrototype ().appendDefinitionTo (job);
+        return job.build ();
     }
 
 }

@@ -5,11 +5,13 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import javax.json.Json;
 import javax.json.JsonObjectBuilder;
+import ru.eludia.base.model.Col;
 import ru.eludia.base.model.abs.AbstractCol;
 
 public final class PhysicalCol extends AbstractCol {
     
-    JDBCType type;    
+    JDBCType type;   
+    Col prototype;
     String def;
     String ref = null;
     String fk = null;
@@ -25,6 +27,14 @@ public final class PhysicalCol extends AbstractCol {
 
         if ("NULL".equals (def) || "NULL ".equals (def)) def = null;
 
+    }
+
+    public void setPrototype (Col prototype) {
+        this.prototype = prototype;
+    }
+
+    public Col getPrototype () {
+        return prototype;
     }
 
     public void setVirtual (boolean virtual) {

@@ -856,8 +856,9 @@ public abstract class ANSI extends DB {
         
         PhysicalCol physical = toBasicPhysical (canonical);
         
-        physical.setRemark   (canonical.getRemark  ());
-        physical.setNullable (col.isNullable ());
+        physical.setRemark    (canonical.getRemark  ());
+        physical.setNullable  (col.isNullable ());
+        physical.setPrototype (col);
         
         adjustDefaultValue (col, physical);
 

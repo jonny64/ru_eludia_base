@@ -3,6 +3,9 @@ package ru.eludia.base.db.sql.gen;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonObjectBuilder;
 import ru.eludia.base.model.ColEnum;
 import ru.eludia.base.model.Table;
 
@@ -258,4 +261,15 @@ public class Select extends Part<Select> {
         return toSome (table.getModel ().t (t), names);
     }
     
+    public JsonObject getFieldsAsJson () {
+        final JsonObjectBuilder job = Json.createObjectBuilder ();
+        appendDefinitionTo (job);
+        for (Join i: joins) i.appendDefinitionTo (job);
+        return job.build ();
+    }
+    
+    public void appendColumnsTo (JsonObjectBuilder job) {
+        job.add ("_fields", getFieldsAsJson ());
+    }
+
 }

@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
+import javax.json.JsonObjectBuilder;
 import ru.eludia.base.model.Col;
 import ru.eludia.base.model.ColEnum;
 import ru.eludia.base.model.Table;
@@ -137,5 +138,9 @@ public abstract class Part<T extends Part> {
     public List<Filter> getFilters () {
         return filters;
     }    
+    
+    public void appendDefinitionTo (JsonObjectBuilder job) {
+        for (ResultCol i: columns) job.add (i.getName (), i.getDefinition ());
+    }
 
 }
