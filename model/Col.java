@@ -8,7 +8,6 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.function.Supplier;
 import javax.json.Json;
-import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 import ru.eludia.base.DB;
 import ru.eludia.base.db.util.JDBCConsumer;
@@ -25,6 +24,19 @@ public class Col extends AbstractCol implements Cloneable {
     PhysicalCol physicalCol;
     JDBCConsumer<DB> afterAdd = null;
     JDBCConsumer<DB> beforeSetNotNull = null;
+    int minLength = 0;
+
+    public void setFixLength (boolean fix) {
+        this.minLength = fix ? length : 0;
+    }
+
+    public void setMinLength (int minLength) {
+        this.minLength = minLength;
+    }
+
+    public int getMinLength () {
+        return minLength;
+    }
     
     public void onBeforeSetNotNull (JDBCConsumer<DB> beforeSetNotNull) {
         this.beforeSetNotNull = beforeSetNotNull;
@@ -160,6 +172,7 @@ public class Col extends AbstractCol implements Cloneable {
     public void appendDefinitionTo (JsonObjectBuilder job) {
         job.add ("REMARK", remark);
         if (length > 0) job.add ("COLUMN_SIZE", length);
+        if (minLength > 0) job.add ("MIN_LENGTH", minLength);
     }
 
     public static Random random = new Random ();
