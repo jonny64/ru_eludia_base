@@ -196,6 +196,7 @@ public class Col extends AbstractCol implements Cloneable {
         job.add ("TYPE", type.name ().toLowerCase ());
         job.add ("REMARK", remark);
         if (length > 0) job.add ("COLUMN_SIZE", length);
+        if (precision > 0) job.add ("DECIMAL_DIGITS", precision);
         if (minLength > 0) job.add ("MIN_LENGTH", minLength);
         if (max != null) job.add ("MAX", max);
         if (min != null) job.add ("MIN", min);
