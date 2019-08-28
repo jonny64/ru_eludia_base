@@ -27,6 +27,15 @@ public class Col extends AbstractCol implements Cloneable {
     int minLength = 0;
     String min;
     String max;
+    String pattern;
+
+    public void setPattern (String pattern) {
+        this.pattern = pattern;
+    }
+
+    public String getPattern () {
+        return pattern;
+    }
 
     public void setRange (String min, String max) {
         setMin (min);
@@ -200,6 +209,7 @@ public class Col extends AbstractCol implements Cloneable {
         if (minLength > 0) job.add ("MIN_LENGTH", minLength);
         if (max != null) job.add ("MAX", max);
         if (min != null) job.add ("MIN", min);
+        if (pattern != null) job.add ("PATTERN", pattern);
     }
 
     public static Random random = new Random ();
