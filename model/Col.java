@@ -25,6 +25,29 @@ public class Col extends AbstractCol implements Cloneable {
     JDBCConsumer<DB> afterAdd = null;
     JDBCConsumer<DB> beforeSetNotNull = null;
     int minLength = 0;
+    String min;
+    String max;
+
+    public void setRange (String min, String max) {
+        setMin (min);
+        setMax (max);
+    }
+
+    public void setMax (String max) {
+        this.max = max;
+    }
+
+    public String getMax () {
+        return max;
+    }
+
+    public void setMin (String min) {
+        this.min = min;
+    }
+
+    public String getMin () {
+        return min;
+    }
 
     public void setFixLength (boolean fix) {
         this.minLength = fix ? length : 0;
@@ -170,9 +193,12 @@ public class Col extends AbstractCol implements Cloneable {
     }
     
     public void appendDefinitionTo (JsonObjectBuilder job) {
+        job.add ("TYPE", type.name ().toLowerCase ());
         job.add ("REMARK", remark);
         if (length > 0) job.add ("COLUMN_SIZE", length);
         if (minLength > 0) job.add ("MIN_LENGTH", minLength);
+        if (max != null) job.add ("MAX", max);
+        if (min != null) job.add ("MIN", min);
     }
 
     public static Random random = new Random ();
