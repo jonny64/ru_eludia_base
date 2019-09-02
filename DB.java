@@ -1209,6 +1209,8 @@ public abstract class DB implements AutoCloseable, ParamSetter {
         
         final JsonObject o = getJsonObject (toQP (s));
         
+        if (o == null) return null;
+        
         JsonObjectBuilder job = Json.createObjectBuilder ();
         
         o.entrySet ().forEach (i -> job.add (i.getKey (), i.getValue ()));
