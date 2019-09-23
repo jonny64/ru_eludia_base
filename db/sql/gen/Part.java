@@ -98,6 +98,10 @@ public abstract class Part<T extends Part> {
     }
     
     public Filter andEither (String name, Predicate predicate) {
+        if (name.endsWith ("...")) {
+            name = name.substring (0, name.length () - 3);
+            predicate.setOrNull (true);
+        }
         if (filters.isEmpty ()) filters = new ArrayList<> ();       
         final Filter filter = new Filter (this, name, predicate);
         if (!filter.isOff ()) filters.add (filter);
