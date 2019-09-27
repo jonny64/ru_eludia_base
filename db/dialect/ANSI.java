@@ -336,8 +336,6 @@ public abstract class ANSI extends DB {
         if (nextFilter != null) qp.append ('(');
         
         Predicate p = f.getPredicate ();
-
-        if (p.isNot ()) qp.append ("NOT(");
         
         if (p.isOrNull ()) {
             qp.append ('(');
@@ -347,15 +345,17 @@ public abstract class ANSI extends DB {
             qp.append (" IS NULL OR ");
         }
 
+        if (p.isNot ()) qp.append ("NOT(");
+
         qp.append (part.getTableAlias ());
         qp.append ('.');
         qp.append (f.getColumn ().getName ());
 
         p.appendTo (qp, f.getColumn ().toPhysical (), this);
 
-        if (p.isOrNull ()) qp.append (')');
-        
         if (p.isNot ()) qp.append (')');
+
+        if (p.isOrNull ()) qp.append (')');        
         
         if (nextFilter != null) {
             qp.append (" OR ");
