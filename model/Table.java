@@ -4,6 +4,7 @@ import ru.eludia.base.Model;
 import java.beans.BeanInfo;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
+import java.sql.SQLException;
 import ru.eludia.base.model.abs.AbstractTable;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -13,6 +14,7 @@ import java.util.Map;
 import javax.json.JsonObject;
 import ru.eludia.base.DB;
 import ru.eludia.base.db.dialect.Oracle;
+import ru.eludia.base.db.util.JDBCConsumer;
 import ru.eludia.base.model.abs.Roster;
 
 public abstract class Table extends AbstractTable<Col, Key> {
@@ -197,4 +199,12 @@ public abstract class Table extends AbstractTable<Col, Key> {
         
     }
 
+    public void onAfterAdd(JDBCConsumer<DB> afterAdd) {
+        this.afterAdd = afterAdd;
+    }
+
+    public void doAfterAdd(DB db) throws SQLException {
+        if (afterAdd == null) return;
+        afterAdd.accept(db);
+    }
 }
