@@ -908,7 +908,12 @@ public abstract class ANSI extends DB {
                 
         for (Table toBe: tables) {            
             PhysicalTable asIs = ex.get (toBe.getName ());            
-            if (asIs == null) create (toBe, newRefs); else update (asIs, toBe, newRefs);                                    
+            if (asIs == null) {
+                create (toBe, newRefs);
+                toBe.doAfterAdd(this);
+            } else {
+                update (asIs, toBe, newRefs);
+            }
         }
         
         addIndexes (ex);
