@@ -22,6 +22,7 @@ public abstract class Table extends AbstractTable<Col, Key> {
     protected Model model;
     protected Oracle.TemporalityType temporalityType;
     protected Oracle.TemporalityRowsAction temporalityRowsAction;
+    JDBCConsumer<DB> afterAdd = null;
 
     public void setTemporality (Oracle.TemporalityType temporalityType, Oracle.TemporalityRowsAction temporalityRowsAction) {
         this.temporalityType = temporalityType;
