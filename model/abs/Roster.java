@@ -7,7 +7,7 @@ public final class Roster<T extends NamedObject> extends ConcurrentHashMap<Strin
     ConcurrentHashMap<String, T> aliases = new ConcurrentHashMap <> ();
     
     private static String toCanonical (String s) {
-        return s.toUpperCase ();
+        return s.toUpperCase ().replace ("_", "");
     }
 
     @Override
