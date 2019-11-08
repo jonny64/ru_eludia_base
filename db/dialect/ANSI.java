@@ -100,7 +100,8 @@ public abstract class ANSI extends DB {
 
             case VARBINARY: 
                 String vb = toVarbinary (value);
-                st.setString (n, vb);
+                byte[] bs = DB.to.bytesFromHex (vb);
+                st.setBytes (n, bs);
                 break;
                     
             case BLOB: 
