@@ -482,8 +482,24 @@ public class TypeConverter {
             
             BeanInfo info = Introspector.getBeanInfo (clazz);
             
-            PropertyDescriptor [] props = info.getPropertyDescriptors();
+            List <PropertyDescriptor> props = new ArrayList();
             
+            props.addAll(Arrays.asList(info.getPropertyDescriptors()));
+
+            Class superClass = clazz.getSuperclass();
+            while (superClass != null) {
+                BeanInfo superInfo = Introspector.getBeanInfo(superClass);
+
+                if (superInfo.getPropertyDescriptors().length == 0) continue;
+
+                List<PropertyDescriptor> superProps = Arrays.asList(superInfo.getPropertyDescriptors());
+
+                if (superProps == null || superProps.isEmpty()) continue;
+
+                props.addAll(superProps);
+                superClass = superClass.getSuperclass();
+            }
+
             for (PropertyDescriptor pd: props) {
 
                 String name = pd.getName ();
