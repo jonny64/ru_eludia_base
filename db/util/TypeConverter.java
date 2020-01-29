@@ -21,8 +21,10 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -482,7 +484,7 @@ public class TypeConverter {
             
             BeanInfo info = Introspector.getBeanInfo (clazz);
             
-            List <PropertyDescriptor> props = new ArrayList();
+            Set <PropertyDescriptor> props = new HashSet();
             
             props.addAll(Arrays.asList(info.getPropertyDescriptors()));
 
