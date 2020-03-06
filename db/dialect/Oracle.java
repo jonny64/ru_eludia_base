@@ -517,7 +517,7 @@ public final class Oracle extends ANSI {
             
         });
         
-        forEach (new QP ("SELECT trigger_type, triggering_event, table_name, trigger_body FROM user_triggers"), rs -> {
+        forEach (new QP ("SELECT trigger_name, trigger_type, triggering_event, table_name, trigger_body FROM user_triggers"), rs -> {
             
             PhysicalTable t = m.get (rs.getString ("TABLE_NAME"));
             
@@ -526,8 +526,14 @@ public final class Oracle extends ANSI {
             String type = rs.getString ("TRIGGER_TYPE");
             
             if (!type.endsWith (" EACH ROW")) return;
-                        
+
+            final String logMsg = "PhysicalModel.getExistingModel table_name=" + rs.getString ("TABLE_NAME") + ", trigger_name=" + rs.getString ("TRIGGER_NAME") + ", trigger_type=" + type + ", triggering_event=" + rs.getString ("TRIGGERING_EVENT");
+
+            logger.log (Level.INFO, logMsg);
+
             t.getTriggers ().add (new Trigger (type.substring (0, type.length () - "EACH ROW".length ()) + rs.getString ("TRIGGERING_EVENT"), rs.getString ("TRIGGER_BODY")));
+
+            logger.log (Level.INFO, logMsg + " done.");
 
         });        
 
