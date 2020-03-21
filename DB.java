@@ -17,7 +17,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,7 +35,6 @@ import ru.eludia.base.db.sql.build.TableRecordSQLBuilder;
 import ru.eludia.base.db.sql.build.TableRecordListBuilder;
 import ru.eludia.base.db.sql.build.TableSQLBuilder;
 import ru.eludia.base.model.phys.PhysicalCol;
-import ru.eludia.base.model.abs.Roster;
 import ru.eludia.base.model.Table;
 import ru.eludia.base.db.sql.gen.Get;
 import ru.eludia.base.db.sql.gen.Select;
@@ -1822,7 +1820,7 @@ public abstract class DB implements AutoCloseable, ParamSetter {
         
         @Override
         void write () throws SQLException {
-            insert (tb, records);
+            upsert (tb, records, key);
             cnt += records.size ();
             if (cnt >= tbSize) flushBufferTable ();
         }
