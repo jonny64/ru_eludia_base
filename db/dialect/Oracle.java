@@ -853,7 +853,7 @@ public final class Oracle extends ANSI {
     }
     
     @Override
-    protected void checkModel () throws SQLException {
+    protected void checkModel (PhysicalModel pm) throws SQLException {
 
         try {
             d0 ("PURGE RECYCLEBIN");
@@ -880,10 +880,10 @@ public final class Oracle extends ANSI {
             oldNBrokenViews = brokenViewNames.size ();
 
         }
-        
+
         if (!fixedViewNames.isEmpty ()) {
             
-            PhysicalModel ex = getExistingModel ();
+            PhysicalModel ex = pm;
             
             for (String name: fixedViewNames) {
 

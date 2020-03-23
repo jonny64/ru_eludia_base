@@ -992,7 +992,7 @@ public abstract class ANSI extends DB {
         
         }
         
-        checkModel ();
+        checkModel (ex);
 
     }   
 
@@ -1018,6 +1018,7 @@ public abstract class ANSI extends DB {
                 }
                 catch (SQLException e) {
                     // do nothing, fix in checkModel ()
+                    // logger.log (Level.WARNING, e.toString (), e);
                 }
                 
             }
@@ -1030,7 +1031,7 @@ public abstract class ANSI extends DB {
         updateSchema (model.getTables ());
     }
     
-    protected void checkModel () throws SQLException {}
+    protected void checkModel (PhysicalModel pm) throws SQLException {}
     
     protected abstract PhysicalKey toPhysical (Table table, Key k);
     protected abstract Col toCanonical (Col col);
